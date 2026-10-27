@@ -1,0 +1,18 @@
+# Pages and feeds listing companies: fund portfolios, event exhibitor lists, rankings.
+# Copy to config/sources.yaml (gitignored) and add your own. Lists are re-read every 30 days by
+# `radar discover` (--force-lists to re-read now); only companies not seen before are processed.
+#
+# type: page (default)       any web page linking to companies, or to one detail page per company
+#       norrsken_impact100   Norrsken's Impact/100 data (all years)
+#       sitemap_profiles     a sitemap of one-profile-per-company pages (e.g. Serena); use
+#                            include_categories to keep only some categories
+lists:
+  - name: 360 Capital portfolio
+    url: https://www.360cap.vc/portfolio
+  - name: Norrsken Impact/100
+    url: https://pages.norrsken.org/api/impact100
+    type: norrsken_impact100
+  - name: Serena (climate & nature)
+    url: https://www.serena.vc/wp-sitemap-posts-portfolio-profile-1.xml
+    type: sitemap_profiles
+    include_categories: [Climate Tech, Nature Tech]

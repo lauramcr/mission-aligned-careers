@@ -1,0 +1,11 @@
+{
+  "purpose": "website",
+  "key": "mareo",
+  "recorded_by": "hand-written sample (replace with `radar demo record` once Claude Code is installed)",
+  "model": "",
+  "output": {
+    "website": "https://mareo.example",
+    "source_url": "https://mareo.example/",
+    "confidence": 0.9
+  }
+}

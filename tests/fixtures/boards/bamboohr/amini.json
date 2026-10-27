@@ -1,0 +1,87 @@
+{
+ "meta": {
+  "totalCount": 4
+ },
+ "result": [
+  {
+   "id": "57",
+   "jobOpeningName": "General Manager, Caribbean - Sovereign Sales & Partnerships",
+   "departmentId": "18656",
+   "departmentLabel": "CEO Office",
+   "employmentStatusLabel": "Full-Time",
+   "employmentType": null,
+   "location": {
+    "city": null,
+    "state": null
+   },
+   "atsLocation": {
+    "country": "Barbados",
+    "state": null,
+    "province": null,
+    "city": null
+   },
+   "isRemote": null,
+   "locationType": "1"
+  },
+  {
+   "id": "59",
+   "jobOpeningName": "Product Lead, Apps",
+   "departmentId": "18578",
+   "departmentLabel": "Product",
+   "employmentStatusLabel": "Indefinite Term Employee - Full Time",
+   "employmentType": null,
+   "location": {
+    "city": null,
+    "state": null
+   },
+   "atsLocation": {
+    "country": "Kenya",
+    "state": null,
+    "province": null,
+    "city": null
+   },
+   "isRemote": null,
+   "locationType": "1"
+  },
+  {
+   "id": "60",
+   "jobOpeningName": "PMO Lead",
+   "departmentId": "18573",
+   "departmentLabel": "Operations",
+   "employmentStatusLabel": "Indefinite Term Employee - Full Time",
+   "employmentType": null,
+   "location": {
+    "city": null,
+    "state": null
+   },
+   "atsLocation": {
+    "country": "Kenya",
+    "state": null,
+    "province": null,
+    "city": null
+   },
+   "isRemote": null,
+   "locationType": "1"
+  },
+  {
+   "id": "62",
+   "jobOpeningName": "Register your interest (Talent Pipeline)",
+   "departmentId": "18604",
+   "departmentLabel": "People & Culture",
+   "employmentStatusLabel": "Full-Time",
+   "employmentType": null,
+   "location": {
+    "city": null,
+    "state": null
+   },
+   "atsLocation": {
+    "country": null,
+    "state": null,
+    "province": null,
+    "city": null
+   },
+   "isRemote": null,
+   "locationType": "1"
+  }
+ ]
+}

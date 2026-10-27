@@ -1,0 +1,40 @@
+# Recorded responses for the offline demo: URL -> saved file (and HTTP status).
+# All companies are fictional; nothing here is ever fetched from the internet.
+https://adboost.example:
+  file: pages/adboost-home.html
+https://api.ashbyhq.com/posting-api/job-board/voltaia?includeCompensation=true:
+  file: feeds/ashby-voltaia.json
+https://apply.workable.com/api/v1/widget/accounts/boucle:
+  file: feeds/workable-boucle.json
+https://boards-api.greenhouse.io/v1/boards/rechargecommune/jobs?content=true:
+  status: 404
+https://boucle.example:
+  file: pages/boucle-home.html
+https://canopee.example:
+  file: pages/canopee-home.html
+https://canopee.example/careers:
+  file: pages/canopee-careers.html
+https://canopee.teamtailor.com/jobs.rss:
+  file: feeds/teamtailor-canopee.rss
+https://fondsvertavenir.example/portfolio:
+  file: pages/fondsvertavenir-portfolio.html
+https://heatloop.example:
+  file: pages/heatloop-home.html
+https://heatloop.jobs.personio.de/xml:
+  file: feeds/personio-heatloop.xml
+https://hydronord.example:
+  status: 403
+https://mareo.example:
+  file: pages/mareo-home.html
+https://mareo.example/careers:
+  file: pages/mareo-careers.html
+https://petrosense.example:
+  file: pages/petrosense-home.html
+https://rechargecommune.example:
+  file: pages/rechargecommune-home.html
+https://terroirplus.example:
+  file: pages/terroirplus-home.html
+https://terroirplus.example/recrutement:
+  file: pages/terroirplus-recrutement.html
+https://voltaia.example:
+  file: pages/voltaia-home.html

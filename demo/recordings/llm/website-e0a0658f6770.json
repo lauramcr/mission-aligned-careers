@@ -1,0 +1,11 @@
+{
+  "purpose": "website",
+  "key": "adboost",
+  "recorded_by": "hand-written sample (replace with `radar demo record` once Claude Code is installed)",
+  "model": "",
+  "output": {
+    "website": "https://adboost.example",
+    "source_url": "https://adboost.example/",
+    "confidence": 0.9
+  }
+}

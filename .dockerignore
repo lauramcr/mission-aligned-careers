@@ -1,0 +1,17 @@
+# Never send personal data, local state or tooling caches to the image build.
+.git
+.github
+.venv
+**/__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+data/
+demo-run/
+config/*
+!config/*.example.yaml
+.env
+.env.*
+tests/
+docs/
+local/

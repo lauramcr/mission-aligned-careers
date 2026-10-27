@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:tt="https://teamtailor.com/locations">
+  <channel>
+    <title>Canopée Data</title>
+    <link>https://canopee.teamtailor.com/jobs</link>
+    <item>
+      <title>Data Scientist – Forest Carbon</title>
+      <description>&lt;p&gt;Build machine learning models that estimate forest carbon from satellite imagery (remote sensing). You work in Python, with solid statistics and some GIS. (Fictional demo posting.)&lt;/p&gt;</description>
+      <pubDate>Mon, 19 Oct 2026 10:00:00 +0200</pubDate>
+      <link>https://canopee.teamtailor.com/jobs/7001234-data-scientist-forest-carbon</link>
+      <remoteStatus>fully</remoteStatus>
+      <guid>demo-canopee-7001234</guid>
+      <tt:locations>
+        <tt:location><tt:name>France</tt:name><tt:city></tt:city><tt:country>France</tt:country></tt:location>
+      </tt:locations>
+      <tt:department>Data</tt:department>
+    </item>
+  </channel>
+</rss>

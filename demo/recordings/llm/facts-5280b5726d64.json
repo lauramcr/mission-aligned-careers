@@ -1,0 +1,25 @@
+{
+  "purpose": "facts",
+  "key": "terroirplus.example",
+  "recorded_by": "hand-written sample (replace with `radar demo record` once Claude Code is installed)",
+  "model": "",
+  "output": {
+    "short_description": "Soil-health data and agronomy for regenerative farming",
+    "primary_theme": "sustainable_agriculture",
+    "secondary_themes": [],
+    "org_type": "startup",
+    "business_model": "b2b_saas",
+    "headcount_estimate": 15,
+    "funding_status": "funded",
+    "office_locations": [
+      "Bordeaux"
+    ],
+    "core_sectors": [],
+    "major_client_sectors": [],
+    "data_centrality": "core",
+    "greenwashing_risk": false,
+    "confidence": 0.8,
+    "evidence": {},
+    "extracted_by": "llm"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "purpose": "facts",
+  "key": "boucle.example",
+  "recorded_by": "hand-written sample (replace with `radar demo record` once Claude Code is installed)",
+  "model": "",
+  "output": {
+    "short_description": "Marketplace for refurbished phones and laptops",
+    "primary_theme": "repair_refurbishment",
+    "secondary_themes": [
+      "circular_economy"
+    ],
+    "org_type": "scaleup",
+    "business_model": "marketplace",
+    "headcount_estimate": 120,
+    "funding_status": "revenue",
+    "office_locations": [
+      "Paris"
+    ],
+    "core_sectors": [],
+    "major_client_sectors": [],
+    "data_centrality": "core",
+    "greenwashing_risk": false,
+    "confidence": 0.85,
+    "evidence": {
+      "primary_theme": "repair instead of replace"
+    },
+    "extracted_by": "llm"
+  }
+}

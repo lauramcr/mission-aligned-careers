@@ -1,0 +1,25 @@
+{
+  "purpose": "facts",
+  "key": "hydronord.example",
+  "recorded_by": "hand-written sample (replace with `radar demo record` once Claude Code is installed)",
+  "model": "",
+  "output": {
+    "short_description": "Green hydrogen from offshore wind for industry",
+    "primary_theme": "green_hydrogen",
+    "secondary_themes": [],
+    "org_type": "startup",
+    "business_model": "hardware",
+    "headcount_estimate": 50,
+    "funding_status": "funded",
+    "office_locations": [
+      "Lille"
+    ],
+    "core_sectors": [],
+    "major_client_sectors": [],
+    "data_centrality": "supporting",
+    "greenwashing_risk": false,
+    "confidence": 0.5,
+    "evidence": {},
+    "extracted_by": "llm"
+  }
+}

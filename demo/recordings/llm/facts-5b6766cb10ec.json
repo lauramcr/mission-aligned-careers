@@ -1,0 +1,29 @@
+{
+  "purpose": "facts",
+  "key": "petrosense.example",
+  "recorded_by": "hand-written sample (replace with `radar demo record` once Claude Code is installed)",
+  "model": "",
+  "output": {
+    "short_description": "Machine learning to find and produce more oil & gas",
+    "primary_theme": null,
+    "secondary_themes": [],
+    "org_type": "startup",
+    "business_model": "b2b_saas",
+    "headcount_estimate": 45,
+    "funding_status": "funded",
+    "office_locations": [
+      "Paris"
+    ],
+    "core_sectors": [
+      "oil_and_gas"
+    ],
+    "major_client_sectors": [
+      "oil_and_gas"
+    ],
+    "data_centrality": "core",
+    "greenwashing_risk": false,
+    "confidence": 0.9,
+    "evidence": {},
+    "extracted_by": "llm"
+  }
+}

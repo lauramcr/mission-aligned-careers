@@ -1,0 +1,50 @@
+{
+ "name": "Boucle",
+ "description": null,
+ "jobs": [
+  {
+   "title": "Analytics Engineer",
+   "shortcode": "DEMO0A1B2C",
+   "employment_type": "Full-time",
+   "telecommuting": false,
+   "department": "Data",
+   "url": "https://apply.workable.com/j/DEMO0A1B2C",
+   "shortlink": "https://apply.workable.com/j/DEMO0A1B2C",
+   "published_on": "2026-10-14",
+   "created_at": "2026-10-14",
+   "country": "France",
+   "city": "Paris",
+   "state": "Île-de-France",
+   "experience": "Mid-Senior level",
+   "locations": [
+    {
+     "country": "France",
+     "countryCode": "FR",
+     "city": "Paris"
+    }
+   ]
+  },
+  {
+   "title": "Customer Care Agent",
+   "shortcode": "DEMO3D4E5F",
+   "employment_type": "Full-time",
+   "telecommuting": false,
+   "department": "Support",
+   "url": "https://apply.workable.com/j/DEMO3D4E5F",
+   "shortlink": "https://apply.workable.com/j/DEMO3D4E5F",
+   "published_on": "2026-10-14",
+   "created_at": "2026-10-14",
+   "country": "France",
+   "city": "Paris",
+   "state": "Île-de-France",
+   "experience": "Entry level",
+   "locations": [
+    {
+     "country": "France",
+     "countryCode": "FR",
+     "city": "Paris"
+    }
+   ]
+  }
+ ]
+}

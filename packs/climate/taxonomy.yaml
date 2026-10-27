@@ -1,0 +1,252 @@
+# Domain pack: climate & nature
+# The shared VOCABULARY for a climate job search: what themes, sectors,
+# organisation types and role families exist. No personal preferences here —
+# those live in config/criteria.yaml, which may only reference ids defined below.
+# Theme and sector descriptions are injected into the LLM extraction prompt.
+
+pack: climate
+version: 1
+
+themes:
+  circular_economy:
+    label: "Circular economy"
+    description: "recycling, reuse, repair, resale, remanufacturing"
+    keywords: ["circular economy", "circularity", "recycling", "recycled", "recycle", "upcycling", "reuse", "remanufacturing", "waste", "economie circulaire", "recyclage", "reemploi", "dechets", "circular economy materials"]
+  repair_refurbishment:
+    label: "Repair & refurbishment"
+    description: "electronics, appliances, second-hand marketplaces"
+    keywords: ["repair", "refurbished", "refurbishment", "second hand", "secondhand", "resale", "pre owned", "reconditionne", "reparation", "seconde main"]
+  sustainable_materials:
+    label: "Sustainable materials"
+    description: "plastic, leather and textile substitutes"
+    keywords: ["sustainable materials", "bio based", "biobased", "biomaterials", "bioplastic", "plastic alternative", "leather alternative", "low carbon materials", "low carbon cement", "green steel", "materiaux biosources", "recycled feedstock"]
+  alternative_proteins:
+    label: "Alternative proteins"
+    description: "plant-based, fermentation, cultivated protein"
+    keywords: ["alternative protein", "alternative proteins", "plant based", "cultivated meat", "precision fermentation", "mycelium", "insect protein", "proteines alternatives"]
+  energy_efficiency:
+    label: "Energy efficiency"
+    description: "reducing energy use in industry, buildings and processes"
+    keywords: ["energy efficiency", "energy savings", "energy consumption", "heat pump", "industrial heat", "waste heat", "heat recovery", "energy management", "efficacite energetique", "decarbonizing industrial", "decarbonising industrial"]
+  renewable_energy:
+    label: "Renewable energy"
+    description: "solar, wind, geothermal, hydro, storage"
+    keywords: ["renewable energy", "renewables", "clean energy", "solar", "photovoltaic", "wind power", "wind energy", "offshore wind", "geothermal", "hydropower", "wave energy", "tidal energy", "energy storage", "battery storage", "energies renouvelables", "solaire", "eolien"]
+  grid_flexibility_energy_data:
+    label: "Grid flexibility & energy data"
+    description: "demand response, grid software, energy data platforms"
+    keywords: ["grid", "flexibility", "demand response", "smart grid", "virtual power plant", "energy data", "energy trading", "24 7 carbon free", "electricity market", "reseau electrique"]
+  nuclear:
+    label: "Nuclear"
+    description: "fission, fusion, small modular reactors"
+    keywords: ["nuclear", "fusion energy", "fission", "small modular reactor", "nucleaire"]
+  green_hydrogen:
+    label: "Green hydrogen"
+    description: "hydrogen from renewable electrolysis only"
+    keywords: ["hydrogen", "electrolysis", "electrolyser", "electrolyzer", "hydrogene"]
+  carbon_capture_removal:
+    label: "Carbon capture & removal"
+    description: "direct air capture, BECCS, mineralisation, nature-based removal"
+    keywords: ["carbon capture", "carbon removal", "direct air capture", "co2 capture", "atmospheric co2", "captured co2", "biochar", "enhanced weathering", "carbon sequestration", "carbon dioxide removal", "captage du co2"]
+  sustainable_agriculture:
+    label: "Sustainable agriculture"
+    description: "precision and regenerative agriculture"
+    keywords: ["regenerative agriculture", "precision agriculture", "agtech", "agritech", "agriculture", "farmers", "farming", "soil health", "agroecology", "animal feed", "insect protein", "insect-based", "food system", "alimentation animale", "agriculture food", "agriculture alimentation"]
+  food_systems:
+    label: "Food systems"
+    description: "food waste, supply-chain traceability, soil health"
+    keywords: ["food waste", "food system", "food supply chain", "food traceability", "foodtech", "food tech", "gaspillage alimentaire"]
+  biodiversity_rewilding:
+    label: "Biodiversity & rewilding"
+    description: "habitat restoration, species protection, nature finance"
+    keywords: ["biodiversity", "rewilding", "nature based solutions", "nature restoration", "reforestation", "afforestation", "ecosystem restoration", "nature positive", "biodiversite", "mangrove", "nature tech"]
+  earth_observation_mrv:
+    label: "Earth observation & MRV"
+    description: "satellite/sensor monitoring, impact measurement and verification"
+    keywords: ["earth observation", "remote sensing", "mrv", "measurement reporting and verification", "geospatial", "satellite imagery", "satellite data", "satellite monitoring"]
+  clean_air:
+    label: "Clean air"
+    description: "air quality monitoring and pollution reduction"
+    keywords: ["air quality", "air pollution", "clean air", "qualite de l air"]
+  clean_water:
+    label: "Clean water"
+    description: "water treatment, access, monitoring"
+    keywords: ["water treatment", "clean water", "wastewater", "water quality", "desalination", "water management", "traitement de l eau", "eau potable"]
+  ocean:
+    label: "Ocean"
+    description: "blue carbon, fisheries, marine biodiversity"
+    keywords: ["ocean", "marine", "blue carbon", "fisheries", "seaweed", "aquaculture", "ocean health"]
+  public_transport:
+    label: "Public & shared transport"
+    description: "rail, transit, shared and active mobility"
+    keywords: ["public transport", "railway", "rail", "transit", "micromobility", "cycling", "bike sharing", "shared mobility", "transport en commun", "ferroviaire", "mobilite douce"]
+  sustainable_logistics:
+    label: "Sustainable logistics"
+    description: "freight optimisation, rail freight, cargo bikes"
+    keywords: ["logistics", "freight", "last mile", "cargo bike", "logistique", "fret"]
+  low_carbon_buildings:
+    label: "Low-carbon buildings"
+    description: "renovation, building energy management, low-carbon construction"
+    keywords: ["low carbon buildings", "building renovation", "energy renovation", "sustainable construction", "built environment", "embodied carbon", "construction", "renovation", "batiment", "renovation energetique"]
+  climate_adaptation:
+    label: "Climate adaptation"
+    description: "flood, heat and water-stress resilience for cities and territories"
+    keywords: ["climate adaptation", "adaptation", "climate resilience", "flood", "heatwave", "drought"]
+  sustainability_software:
+    label: "Sustainability software"
+    description: "software that directly drives sustainable practices"
+    keywords: ["sustainability software", "sustainability platform", "decarbonization platform", "decarbonisation platform", "climate software"]
+  climate_investment_support:
+    label: "Climate investment & support"
+    description: "green VC, impact funds, public investors, accelerators, incubators"
+    keywords: ["climate fund", "impact fund", "venture capital", "accelerator", "incubator", "climate investor"]
+  carbon_accounting_esg:
+    label: "Carbon accounting & ESG"
+    description: "emissions measurement, ESG reporting software and consulting"
+    keywords: ["carbon accounting", "carbon footprint", "esg", "emissions reporting", "scope 3", "csrd", "bilan carbone", "ghg emissions", "greenhouse gas emissions"]
+  carbon_credits_offsets:
+    label: "Carbon credits & offsets"
+    description: "credit generation, marketplaces, offset projects"
+    keywords: ["carbon credits", "carbon credit", "offsets", "offsetting", "carbon market", "credits carbone", "compensation carbone"]
+  climate_risk_insurance:
+    label: "Climate risk & insurance"
+    description: "physical/transition risk analytics, climate insurance"
+    keywords: ["climate risk", "parametric insurance", "insurance", "insurtech", "catastrophe risk"]
+  climate_fintech:
+    label: "Climate fintech"
+    description: "green banking, climate-aligned payments and lending"
+    keywords: ["green finance", "sustainable finance", "climate fintech", "green banking", "finance durable", "green savings", "sustainable investing"]
+  electric_vehicles:
+    label: "Electric vehicles"
+    description: "EVs, charging, car-centric electric mobility"
+    keywords: ["electric vehicle", "electric vehicles", "ev charging", "charging station", "charging network", "electric car", "e mobility", "vehicule electrique", "borne de recharge"]
+  methane_monitoring:
+    label: "Methane monitoring"
+    description: "methane leak detection and measurement"
+    keywords: ["methane", "methane emissions", "methane leak"]
+  mining_transition_metals:
+    label: "Transition-metals mining"
+    description: "lithium, cobalt, nickel, copper extraction"
+    keywords: ["mining", "lithium", "nickel", "cobalt", "critical minerals", "critical metals"]
+
+sectors:   # used for core-business exclusions, penalties and client-sector detection
+  oil_and_gas:
+    description: "exploration, production, refining, oilfield services"
+    keywords: ["oil and gas", "oilfield", "petroleum", "upstream oil", "oil majors"]
+  fossil_hydrogen:
+    description: "grey or blue hydrogen"
+    keywords: ["grey hydrogen", "gray hydrogen", "blue hydrogen", "steam methane reforming"]
+  defence:
+    description: "weapons and military equipment"
+    keywords: ["defence", "defense", "military", "weapons", "armed forces"]
+  fast_fashion:
+    description: "high-volume, low-cost fashion retail"
+    keywords: ["fast fashion"]
+  agrochemicals:
+    description: "synthetic pesticides and fertilisers"
+    keywords: ["pesticides", "agrochemicals", "synthetic fertilizers"]
+  aviation:
+    description: "airlines, aircraft, airports"
+    keywords: ["airline", "airlines", "aircraft", "aviation", "airport"]
+  crypto:
+    description: "cryptocurrencies, blockchain tokens"
+    keywords: ["crypto", "cryptocurrency", "blockchain", "bitcoin", "stablecoin", "web3"]
+  intensive_livestock:
+    description: "industrial livestock farming"
+    keywords: ["factory farming", "intensive livestock"]
+
+org_types:
+  - startup
+  - scaleup
+  - sme
+  - large_company
+  - public_operator         # e.g. transport operators
+  - public_agency           # e.g. environment or investment agencies
+  - investor                # VC, impact fund, public investment bank
+  - accelerator_incubator
+  - nonprofit
+  - social_enterprise       # ESS, entreprise à mission, B Corp
+
+business_models: [b2b_saas, b2c, marketplace, hardware, deep_tech, services, public_service, investment]
+
+role_families:   # title keywords (EN/FR, lowercase) drive the code-only job prefilter
+  data_engineering:
+    label: Data engineering
+    title_keywords: ["data engineer", "ingénieur data", "ingénieur·e data", "ingénieur données", "data platform", "dataops"]
+  analytics_engineering:
+    label: Analytics engineering
+    title_keywords: ["analytics engineer"]
+  data_science:
+    label: Data science
+    title_keywords: ["data scientist", "machine learning", "ml engineer", "scientifique des données"]
+  data_analysis_bi:
+    label: Data analysis / BI
+    title_keywords: ["data analyst", "business intelligence", "bi analyst", "bi developer", "analyste données", "analyste data", "chargé d'études", "business analytics", "data analytics"]
+  investment_analysis:
+    label: Investment analysis
+    title_keywords: ["investment analyst", "investment associate", "analyste investissement", "chargé d'affaires", "venture analyst"]
+  project_management:
+    label: Project management
+    title_keywords: ["project manager", "chef de projet", "cheffe de projet", "chargé de projet", "chargée de projet", "program manager", "pmo"]
+  product_operations:
+    label: Product operations / data PM
+    title_keywords: ["product ops", "product operations", "data product manager", "product manager data"]
+
+flags:
+  oil_gas_clients: "Counts oil & gas companies as clients. Acceptable only if the product has a genuine climate impact."
+  offset_quality: "Carbon credits or offsets: check certification, additionality and permanence."
+  methane_oil_gas: "Methane monitoring sold mainly to oil & gas."
+  hydrogen_source_unclear: "Hydrogen company: confirm it uses renewable electrolysis."
+  funding_unclear: "Couldn't confirm the company has funding or revenue."
+  greenwashing_risk: "Climate claims look vague or marketing-led."
+  low_confidence: "The extraction was unsure about key facts. Review manually."
+  tier_c_theme: "Theme in tier C: always review."
+
+# Keywords for rough facts (free, low confidence) when no LLM is available.
+fact_keywords:
+  business_models:
+    b2b_saas: ["saas", "software", "platform", "api", "dashboard", "b2b", "logiciel"]
+    hardware: ["hardware", "device", "sensor", "machine", "robot", "equipment", "battery"]
+    marketplace: ["marketplace"]
+    b2c: ["consumers", "households", "particuliers"]
+    deep_tech: ["deep tech", "deeptech", "patented", "laboratory", "breakthrough technology"]
+    services: ["consulting", "advisory", "conseil", "consultancy"]
+    investment: ["venture capital", "invests in", "investment fund"]
+  data_centrality:
+    core: ["saas", "analytics", "data platform", "data science", "machine learning", "monitoring", "satellite", "dashboard", "digital twin"]
+    supporting: ["hardware", "plant", "factory", "manufacturing", "device", "sensor", "materials", "chemistry", "pilot", "production"]
+  org_types:
+    investor: ["venture capital", "investment fund", "invests in", "portfolio companies"]
+    accelerator_incubator: ["accelerator", "incubator", "incubateur"]
+    nonprofit: ["non profit", "nonprofit", "association", "ngo", "charity", "think tank"]
+    public_agency: ["public agency", "government agency", "agence publique"]
+
+# Skills a CV or a job description can name, for CV fit (whole-word match, EN/FR).
+skills:
+  sql: {label: SQL, keywords: [sql, postgresql, postgres, mysql]}
+  python: {label: Python, keywords: [python, pandas]}
+  r: {label: R, keywords: [r, rstudio]}
+  dbt: {label: dbt, keywords: [dbt]}
+  spark: {label: Spark, keywords: [spark, pyspark, databricks]}
+  airflow: {label: "Orchestration (Airflow, Dagster)", keywords: [airflow, dagster, prefect]}
+  bigquery: {label: BigQuery, keywords: [bigquery]}
+  snowflake: {label: Snowflake, keywords: [snowflake]}
+  cloud: {label: "Cloud (AWS, GCP, Azure)", keywords: [aws, gcp, azure, google cloud]}
+  docker: {label: Docker, keywords: [docker, kubernetes]}
+  git: {label: Git, keywords: [git, github, gitlab]}
+  power_bi: {label: Power BI, keywords: [power bi, powerbi, dax]}
+  tableau: {label: Tableau, keywords: [tableau]}
+  looker: {label: Looker, keywords: [looker, lookml]}
+  excel: {label: Excel, keywords: [excel]}
+  statistics: {label: Statistics, keywords: [statistics, statistical, statistique, statistiques]}
+  machine_learning: {label: Machine learning, keywords: [machine learning, ml, scikit learn, sklearn, apprentissage automatique]}
+  forecasting: {label: Forecasting, keywords: [forecasting, forecast, forecasts, prevision, previsions]}
+  experimentation: {label: A/B testing, keywords: [a b testing, ab testing, experimentation]}
+  gis: {label: GIS, keywords: [gis, qgis, arcgis, geospatial, geospatiale]}
+  remote_sensing: {label: Remote sensing, keywords: [remote sensing, satellite imagery, teledetection, earth observation]}
+  lca: {label: Life cycle assessment, keywords: [lca, life cycle assessment, acv, analyse du cycle de vie]}
+  carbon_accounting: {label: Carbon accounting, keywords: [carbon accounting, ghg protocol, bilan carbone, scope 3, comptabilite carbone, carbon footprint]}
+  energy_modelling: {label: Energy modelling, keywords: [energy modelling, energy modeling, energy system modelling, modelisation energetique]}
+  stakeholder_management: {label: Stakeholder management, keywords: [stakeholder management, stakeholders, parties prenantes]}
+  product_analytics: {label: Product analytics, keywords: [product analytics, amplitude, mixpanel]}
+  agile: {label: Agile, keywords: [agile, scrum, kanban]}

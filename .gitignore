@@ -1,0 +1,38 @@
+# Personal data — never commit
+data/
+config/criteria.yaml
+config/cv.*
+config/companies.csv
+config/companies_pending.csv
+config/sources.yaml
+config/decisions.csv
+.env
+.env.*
+!.env.personal.example
+
+# Demo output (`radar demo` workspace)
+demo-run/
+
+# Python / tooling
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Local-only files (e.g. full, unscrubbed originals of test samples) — never committed
+local/
+
+# Personal working notes, kept locally only
+docs/KICKOFF_PROMPTS.md

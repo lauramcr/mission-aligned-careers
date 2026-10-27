@@ -1,0 +1,27 @@
+{
+  "purpose": "facts",
+  "key": "mareo.example",
+  "recorded_by": "hand-written sample (replace with `radar demo record` once Claude Code is installed)",
+  "model": "",
+  "output": {
+    "short_description": "Ocean-based carbon dioxide removal with built-in MRV",
+    "primary_theme": "carbon_capture_removal",
+    "secondary_themes": [
+      "ocean"
+    ],
+    "org_type": "startup",
+    "business_model": "deep_tech",
+    "headcount_estimate": 20,
+    "funding_status": "funded",
+    "office_locations": [
+      "Lisbon"
+    ],
+    "core_sectors": [],
+    "major_client_sectors": [],
+    "data_centrality": "supporting",
+    "greenwashing_risk": false,
+    "confidence": 0.8,
+    "evidence": {},
+    "extracted_by": "llm"
+  }
+}

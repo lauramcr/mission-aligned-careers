@@ -1,0 +1,29 @@
+{
+  "purpose": "facts",
+  "key": "canopee.example",
+  "recorded_by": "hand-written sample (replace with `radar demo record` once Claude Code is installed)",
+  "model": "",
+  "output": {
+    "short_description": "Forest carbon and biodiversity monitoring from satellite imagery",
+    "primary_theme": "earth_observation_mrv",
+    "secondary_themes": [
+      "biodiversity_rewilding"
+    ],
+    "org_type": "startup",
+    "business_model": "b2b_saas",
+    "headcount_estimate": 25,
+    "funding_status": "funded",
+    "office_locations": [
+      "Lyon"
+    ],
+    "core_sectors": [],
+    "major_client_sectors": [],
+    "data_centrality": "core",
+    "greenwashing_risk": false,
+    "confidence": 0.9,
+    "evidence": {
+      "primary_theme": "measures forest carbon ... from satellite imagery"
+    },
+    "extracted_by": "llm"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "purpose": "facts",
+  "key": "heatloop.example",
+  "recorded_by": "hand-written sample (replace with `radar demo record` once Claude Code is installed)",
+  "model": "",
+  "output": {
+    "short_description": "Recovers industrial waste heat as process heat",
+    "primary_theme": "energy_efficiency",
+    "secondary_themes": [],
+    "org_type": "startup",
+    "business_model": "hardware",
+    "headcount_estimate": 60,
+    "funding_status": "funded",
+    "office_locations": [
+      "Berlin"
+    ],
+    "core_sectors": [],
+    "major_client_sectors": [],
+    "data_centrality": "supporting",
+    "greenwashing_risk": false,
+    "confidence": 0.85,
+    "evidence": {
+      "primary_theme": "cutting energy consumption by up to 30%"
+    },
+    "extracted_by": "llm"
+  }
+}

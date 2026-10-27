@@ -1,0 +1,195 @@
+{
+ "jobs": [
+  {
+   "absolute_url": "https://boards.greenhouse.io/redwoodmaterials/jobs/5894704004?gh_jid=5894704004",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": false,
+     "requires_processing_consent": false,
+     "requires_retention_consent": false,
+     "retention_period": null,
+     "demographic_data_consent_applies": false
+    }
+   ],
+   "internal_job_id": 5113118004,
+   "location": {
+    "name": "McCarran, NV"
+   },
+   "metadata": null,
+   "id": 5894704004,
+   "updated_at": "2026-10-27T05:32:14-04:00",
+   "requisition_id": "JR100903",
+   "title": "Abuse Test Engineer, Energy Storage",
+   "company_name": "Redwood Materials",
+   "first_published": "2026-04-09T16:59:15-04:00",
+   "language": "en",
+   "application_deadline": null,
+   "content": "&lt;div class=&quot;content-intro&quot;&gt;&lt;div class=&quot;page&quot;&gt;\n&lt;div class=&quot;section&quot;&gt;\n&lt;div class=&quot;layoutArea&quot;&gt;\n&lt;div class=&quot;column&quot;&gt;\n&lt;p&gt;&lt;span style=&quot;font-family: helvetica, arial, sans-serif; font-size: 12pt;&quot;&gt;&lt;strong&gt;About Redwood Materials&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;\n&lt;div&gt;\n&lt;p&gt;&lt;span style=&quot;font-family: helvetica, arial, sans-serif;&quot;&gt;&lt;strong&gt;Redwood Materials was founded in 2017 by [name], co-founder and former CTO of Tesla, on a simple but radical idea: the critical minerals powering the energy transition already exist. They just need to come back. Today Redwood is the largest lithium-ion battery recycler in North America — recovering, refining, and redeploying critical minerals from end-of-life batteries back into the supply chain. On the energy side, Redwood has deployed the largest second-life battery project in the world, delivering power to AI data centers in months rather than years using proprietary energy architecture engineered entirely in-house. The company is profitable, the market it operates in is projected to grow 20 to 50 times over the next decade, and Redwood is the only company with the supply chain, the technology, and the operational scale to lead it.&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;\n&lt;/div&gt;\n&lt;/div&gt;\n&lt;/div&gt;\n&lt;/div&gt;\n&lt;/div&gt;&lt;/div&gt;&lt;p&gt;&lt;span style=&quot;font-size: 12pt;&quot;&gt;&",
+   "departments": [
+    {
+     "id": 4002871004,
+     "name": "Engineering & Technology",
+     "child_ids": [],
+     "parent_id": null
+    }
+   ],
+   "offices": [
+    {
+     "id": 4047691004,
+     "name": "McCarran, NV",
+     "location": null,
+     "child_ids": [],
+     "parent_id": null
+    }
+   ],
+   "ai_disclaimer": null,
+   "include_ai_disclaimer": null,
+   "ai_opt_out_request_url": null
+  },
+  {
+   "absolute_url": "https://boards.greenhouse.io/redwoodmaterials/jobs/6167872004?gh_jid=6167872004",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": false,
+     "requires_processing_consent": false,
+     "requires_retention_consent": false,
+     "retention_period": null,
+     "demographic_data_consent_applies": false
+    }
+   ],
+   "internal_job_id": 5206412004,
+   "location": {
+    "name": "McCarran, NV"
+   },
+   "metadata": null,
+   "id": 6167872004,
+   "updated_at": "2026-10-27T04:17:54-04:00",
+   "requisition_id": "JR101188",
+   "title": "Abuse Testing Technician, Lead",
+   "company_name": "Redwood Materials",
+   "first_published": "2026-09-01T16:29:49-04:00",
+   "language": "en",
+   "application_deadline": null,
+   "content": "&lt;div class=&quot;content-intro&quot;&gt;&lt;div class=&quot;page&quot;&gt;\n&lt;div class=&quot;section&quot;&gt;\n&lt;div class=&quot;layoutArea&quot;&gt;\n&lt;div class=&quot;column&quot;&gt;\n&lt;p&gt;&lt;span style=&quot;font-family: helvetica, arial, sans-serif; font-size: 12pt;&quot;&gt;&lt;strong&gt;About Redwood Materials&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;\n&lt;div&gt;\n&lt;p&gt;&lt;span style=&quot;font-family: helvetica, arial, sans-serif;&quot;&gt;&lt;strong&gt;Redwood Materials was founded in 2017 by [name], co-founder and former CTO of Tesla, on a simple but radical idea: the critical minerals powering the energy transition already exist. They just need to come back. Today Redwood is the largest lithium-ion battery recycler in North America — recovering, refining, and redeploying critical minerals from end-of-life batteries back into the supply chain. On the energy side, Redwood has deployed the largest second-life battery project in the world, delivering power to AI data centers in months rather than years using proprietary energy architecture engineered entirely in-house. The company is profitable, the market it operates in is projected to grow 20 to 50 times over the next decade, and Redwood is the only company with the supply chain, the technology, and the operational scale to lead it.&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;\n&lt;/div&gt;\n&lt;/div&gt;\n&lt;/div&gt;\n&lt;/div&gt;\n&lt;/div&gt;&lt;/div&gt;&lt;p&gt;&lt;strong&gt;Position Summary:&lt;/strong&gt;&l",
+   "departments": [
+    {
+     "id": 4002871004,
+     "name": "Engineering & Technology",
+     "child_ids": [],
+     "parent_id": null
+    }
+   ],
+   "offices": [
+    {
+     "id": 4047690004,
+     "name": "Carson City, NV",
+     "location": null,
+     "child_ids": [],
+     "parent_id": null
+    }
+   ],
+   "ai_disclaimer": null,
+   "include_ai_disclaimer": null,
+   "ai_opt_out_request_url": null
+  },
+  {
+   "absolute_url": "https://boards.greenhouse.io/redwoodmaterials/jobs/6141193004?gh_jid=6141193004",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": false,
+     "requires_processing_consent": false,
+     "requires_retention_consent": false,
+     "retention_period": null,
+     "demographic_data_consent_applies": false
+    }
+   ],
+   "internal_job_id": 5198923004,
+   "location": {
+    "name": "USA - Remote"
+   },
+   "metadata": null,
+   "id": 6141193004,
+   "updated_at": "2026-10-27T04:32:34-04:00",
+   "requisition_id": "JR101152",
+   "title": "Account Manager, Business Development",
+   "company_name": "Redwood Materials",
+   "first_published": "2026-08-13T11:52:23-04:00",
+   "language": "en",
+   "application_deadline": null,
+   "content": "&lt;div class=&quot;content-intro&quot;&gt;&lt;div class=&quot;page&quot;&gt;\n&lt;div class=&quot;section&quot;&gt;\n&lt;div class=&quot;layoutArea&quot;&gt;\n&lt;div class=&quot;column&quot;&gt;\n&lt;p&gt;&lt;span style=&quot;font-family: helvetica, arial, sans-serif; font-size: 12pt;&quot;&gt;&lt;strong&gt;About Redwood Materials&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;\n&lt;div&gt;\n&lt;p&gt;&lt;span style=&quot;font-family: helvetica, arial, sans-serif;&quot;&gt;&lt;strong&gt;Redwood Materials was founded in 2017 by [name], co-founder and former CTO of Tesla, on a simple but radical idea: the critical minerals powering the energy transition already exist. They just need to come back. Today Redwood is the largest lithium-ion battery recycler in North America — recovering, refining, and redeploying critical minerals from end-of-life batteries back into the supply chain. On the energy side, Redwood has deployed the largest second-life battery project in the world, delivering power to AI data centers in months rather than years using proprietary energy architecture engineered entirely in-house. The company is profitable, the market it operates in is projected to grow 20 to 50 times over the next decade, and Redwood is the only company with the supply chain, the technology, and the operational scale to lead it.&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;\n&lt;/div&gt;\n&lt;/div&gt;\n&lt;/div&gt;\n&lt;/div&gt;\n&lt;/div&gt;&lt;/div&gt;&lt;p&gt;&lt;strong&gt;Position Summary:&lt;/strong&gt;&l",
+   "departments": [
+    {
+     "id": 4002872004,
+     "name": "G & A",
+     "child_ids": [],
+     "parent_id": null
+    }
+   ],
+   "offices": [
+    {
+     "id": 4047690004,
+     "name": "Carson City, NV",
+     "location": null,
+     "child_ids": [],
+     "parent_id": null
+    }
+   ],
+   "ai_disclaimer": null,
+   "include_ai_disclaimer": null,
+   "ai_opt_out_request_url": null
+  },
+  {
+   "absolute_url": "https://boards.greenhouse.io/redwoodmaterials/jobs/6228455004?gh_jid=6228455004",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": false,
+     "requires_processing_consent": false,
+     "requires_retention_consent": false,
+     "retention_period": null,
+     "demographic_data_consent_applies": false
+    }
+   ],
+   "internal_job_id": 5230176004,
+   "location": {
+    "name": "Carson City, NV"
+   },
+   "metadata": null,
+   "id": 6228455004,
+   "updated_at": "2026-10-27T00:17:49-04:00",
+   "requisition_id": "JR101304",
+   "title": "Accounts Payable Specialist",
+   "company_name": "Redwood Materials",
+   "first_published": "2026-10-19T15:01:05-04:00",
+   "language": "en",
+   "application_deadline": null,
+   "content": "&lt;div class=&quot;content-intro&quot;&gt;&lt;div class=&quot;page&quot;&gt;\n&lt;div class=&quot;section&quot;&gt;\n&lt;div class=&quot;layoutArea&quot;&gt;\n&lt;div class=&quot;column&quot;&gt;\n&lt;p&gt;&lt;span style=&quot;font-family: helvetica, arial, sans-serif; font-size: 12pt;&quot;&gt;&lt;strong&gt;About Redwood Materials&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;\n&lt;div&gt;\n&lt;p&gt;&lt;span style=&quot;font-family: helvetica, arial, sans-serif;&quot;&gt;&lt;strong&gt;Redwood Materials was founded in 2017 by [name], co-founder and former CTO of Tesla, on a simple but radical idea: the critical minerals powering the energy transition already exist. They just need to come back. Today Redwood is the largest lithium-ion battery recycler in North America — recovering, refining, and redeploying critical minerals from end-of-life batteries back into the supply chain. On the energy side, Redwood has deployed the largest second-life battery project in the world, delivering power to AI data centers in months rather than years using proprietary energy architecture engineered entirely in-house. The company is profitable, the market it operates in is projected to grow 20 to 50 times over the next decade, and Redwood is the only company with the supply chain, the technology, and the operational scale to lead it.&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;\n&lt;/div&gt;\n&lt;/div&gt;\n&lt;/div&gt;\n&lt;/div&gt;\n&lt;/div&gt;&lt;/div&gt;&lt;p&gt;&lt;strong&gt;&lt;span data-contrast=&quot;none&",
+   "departments": [
+    {
+     "id": 4002872004,
+     "name": "G & A",
+     "child_ids": [],
+     "parent_id": null
+    }
+   ],
+   "offices": [
+    {
+     "id": 4047690004,
+     "name": "Carson City, NV",
+     "location": null,
+     "child_ids": [],
+     "parent_id": null
+    }
+   ],
+   "ai_disclaimer": null,
+   "include_ai_disclaimer": null,
+   "ai_opt_out_request_url": null
+  }
+ ],
+ "meta": {
+  "total": 4
+ }
+}

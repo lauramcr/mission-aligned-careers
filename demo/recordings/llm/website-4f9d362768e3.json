@@ -1,0 +1,11 @@
+{
+  "purpose": "website",
+  "key": "heatloop",
+  "recorded_by": "hand-written sample (replace with `radar demo record` once Claude Code is installed)",
+  "model": "",
+  "output": {
+    "website": "https://heatloop.example",
+    "source_url": "https://heatloop.example/",
+    "confidence": 0.9
+  }
+}

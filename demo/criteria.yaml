@@ -1,0 +1,159 @@
+# Demo criteria for Alex Martin (fictional, see demo/cv.md), derived from the CV by hand.
+# A later `radar init --cv` will suggest these from a CV; here they are ready-made.
+# Everything here is a PREFERENCE about vocabulary defined in the pack
+# (packs/<pack>/taxonomy.yaml). Unknown ids are rejected by `radar profile check`.
+# Changing this file re-scores everything without calling the LLM again.
+#
+# Three company scores, each 0–5: impact_fit, practical_fit, career_fit.
+# overall = weighted mean (see `overall`); the three sub-scores are always shown.
+# Job postings get their own role_fit score (see `roles`).
+
+pack: climate
+
+# ---------------------------------------------------------------------------
+location:
+  home: "Paris, France"          # an arrondissement or address gives better commute times
+  max_commute_minutes: 60        # door to door, public transport
+  commute_fallback_km: 20        # used only if commute time can't be computed
+  also_accept_places: [Paris, Île-de-France, La Défense]   # count as within reach of home
+  accept_remote_in: [France, FR, Europe, EMEA, Worldwide, Anywhere]   # fully remote roles located here pass
+
+# ---------------------------------------------------------------------------
+impact:
+  tiers:
+    A:
+      score: 5
+      themes:
+        - circular_economy
+        - repair_refurbishment
+        - sustainable_materials
+        - alternative_proteins
+        - energy_efficiency
+        - renewable_energy
+        - grid_flexibility_energy_data
+        - nuclear
+        - green_hydrogen
+        - carbon_capture_removal
+        - sustainable_agriculture
+        - food_systems
+        - biodiversity_rewilding
+        - earth_observation_mrv
+        - clean_air
+        - clean_water
+        - ocean
+        - public_transport
+        - sustainable_logistics
+        - low_carbon_buildings
+        - climate_adaptation
+        - sustainability_software
+        - climate_investment_support
+    B:
+      score: 3.5
+      themes:
+        - carbon_accounting_esg
+        - carbon_credits_offsets
+        - climate_risk_insurance
+        - climate_fintech
+        - electric_vehicles
+        - methane_monitoring
+    C:
+      score: 2
+      always_flag: true
+      themes:
+        - mining_transition_metals
+  theme_bonus:
+    circular_economy: 0.25
+    repair_refurbishment: 0.25
+  theme_flags:                   # themes that always raise a flag for manual review
+    carbon_credits_offsets: offset_quality
+    methane_monitoring: methane_oil_gas
+    green_hydrogen: hydrogen_source_unclear
+  exclude_core_sectors:          # core business in one of these -> overall 0, hidden
+    - oil_and_gas
+    - fossil_hydrogen
+    - defence
+    - fast_fashion
+    - agrochemicals
+  penalties:                     # sector OR major-client sector -> subtracted from impact_fit
+    aviation: -1.0
+    crypto: -1.0
+    intensive_livestock: -1.0
+  client_sector_flags:           # major clients in these sectors raise a flag (no penalty)
+    oil_and_gas: oil_gas_clients
+
+# ---------------------------------------------------------------------------
+practical:
+  accepted_org_types:
+    - startup
+    - scaleup
+    - sme
+    - large_company
+    - public_operator
+    - public_agency
+    - investor
+    - accelerator_incubator
+    - nonprofit
+    - social_enterprise
+  base_score: 3                  # starting practical_fit for any accepted org type
+  org_type_bonus:
+    startup: 1.0                 # profile is strongest in startups
+    scaleup: 0.5
+  size_bonus:
+    max_employees: 100
+    bonus: 0.5
+  outside_commute_penalty: 0     # location never lowers the score; reports split by location instead
+  require_funding_or_revenue: true   # unknown -> funding_unclear flag (never excludes)
+
+# ---------------------------------------------------------------------------
+career:
+  data_centrality_scores:
+    core: 5                      # data is the product: SaaS, platform, monitoring, analytics
+    supporting: 3.5              # data supports operations (hardware, deep tech, logistics)
+    minimal: 2
+  business_model_bonus:
+    b2b_saas: 0.5
+  org_type_bonus:
+    investor: 0.5                # portfolio and market analysis across many green ventures
+  hiring_target_roles_bonus: 0.5 # an open role in a target family right now
+
+# ---------------------------------------------------------------------------
+roles:
+  target_families:                # from the CV: analyst -> analytics engineer / data scientist
+    - data_analysis_bi
+    - analytics_engineering
+    - data_science
+  preferred_context_keywords: [b2b saas, big data, data platform]
+  languages: [en, fr]
+  contracts:
+    accepted: [permanent, fixed_term, freelance, unknown]
+    excluded: [internship, apprenticeship]
+  cold_application_signal:       # excluded contract + target family + high impact
+    contracts: [internship, apprenticeship]
+    families: [data_engineering, analytics_engineering, data_science, data_analysis_bi, project_management]
+    min_impact_fit: 4.5
+  office_days:                   # affects role_fit only, never discards a job
+    scores: {0: 4, 1: 4.5, 2: 5, 3: 5, 4: 4.5, 5: 4, 6: 4, 7: 4}
+    unknown: 4.5
+
+# ---------------------------------------------------------------------------
+overall:
+  weights: {impact: 0.5, career: 0.3, practical: 0.2}   # must sum to 1
+
+thresholds:
+  show_company_for_review:
+    impact_fit_min: 4
+  open_application_candidate:
+    impact_fit_min: 4.5
+    career_fit_min: 4
+    no_matching_open_role: true
+  notify_job:
+    role_fit_min: 3.5
+  auto_follow:                   # watched automatically; borderline ones go to review
+    impact_fit_min: 4.5
+    overall_min: 4.0
+    min_confidence: 0.6
+
+# ---------------------------------------------------------------------------
+calibration:                     # known verdicts -> scorer test cases
+  love: []                       # e.g. {company: "acme.com", why: "..."}
+  cold: []

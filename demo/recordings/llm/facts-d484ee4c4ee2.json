@@ -1,0 +1,25 @@
+{
+  "purpose": "facts",
+  "key": "adboost.example",
+  "recorded_by": "hand-written sample (replace with `radar demo record` once Claude Code is installed)",
+  "model": "",
+  "output": {
+    "short_description": "Programmatic display advertising",
+    "primary_theme": null,
+    "secondary_themes": [],
+    "org_type": "startup",
+    "business_model": "b2b_saas",
+    "headcount_estimate": 80,
+    "funding_status": "funded",
+    "office_locations": [
+      "Paris"
+    ],
+    "core_sectors": [],
+    "major_client_sectors": [],
+    "data_centrality": "core",
+    "greenwashing_risk": false,
+    "confidence": 0.9,
+    "evidence": {},
+    "extracted_by": "llm"
+  }
+}

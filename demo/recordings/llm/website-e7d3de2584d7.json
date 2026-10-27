@@ -1,0 +1,11 @@
+{
+  "purpose": "website",
+  "key": "boucle",
+  "recorded_by": "hand-written sample (replace with `radar demo record` once Claude Code is installed)",
+  "model": "",
+  "output": {
+    "website": "https://boucle.example",
+    "source_url": "https://boucle.example/",
+    "confidence": 0.9
+  }
+}

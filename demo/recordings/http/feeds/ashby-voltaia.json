@@ -1,0 +1,37 @@
+{
+ "apiVersion": "1",
+ "jobs": [
+  {
+   "id": "3f1c2a90-demo-0001",
+   "title": "Senior Data Analyst",
+   "department": "Data",
+   "team": "Data",
+   "employmentType": "FullTime",
+   "location": "Paris",
+   "secondaryLocations": [],
+   "publishedAt": "2026-10-20T09:00:00.000+00:00",
+   "isListed": true,
+   "isRemote": false,
+   "workplaceType": "Hybrid",
+   "jobUrl": "https://jobs.ashbyhq.com/voltaia/3f1c2a90-demo-0001",
+   "applyUrl": "https://jobs.ashbyhq.com/voltaia/3f1c2a90-demo-0001",
+   "descriptionPlain": "You will own Voltaïa's analytics: SQL and dbt models in BigQuery, Python for forecasting flexible demand, and Power BI dashboards for grid operators. You enjoy stakeholder management with utilities. (Fictional demo posting.)"
+  },
+  {
+   "id": "3f1c2a90-demo-0002",
+   "title": "Backend Engineer",
+   "department": "Data",
+   "team": "Data",
+   "employmentType": "FullTime",
+   "location": "Paris",
+   "secondaryLocations": [],
+   "publishedAt": "2026-10-20T09:00:00.000+00:00",
+   "isListed": true,
+   "isRemote": false,
+   "workplaceType": "Hybrid",
+   "jobUrl": "https://jobs.ashbyhq.com/voltaia/3f1c2a90-demo-0002",
+   "applyUrl": "https://jobs.ashbyhq.com/voltaia/3f1c2a90-demo-0002",
+   "descriptionPlain": "Build the services behind our platform in Go and PostgreSQL, deployed on AWS with Docker and Kubernetes. (Fictional demo posting.)"
+  }
+ ]
+}

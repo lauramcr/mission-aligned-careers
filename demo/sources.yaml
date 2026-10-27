@@ -1,0 +1,4 @@
+# Lists the demo reads: a (fictional) climate fund's portfolio page.
+lists:
+  - name: Fonds Vert Avenir portfolio
+    url: https://fondsvertavenir.example/portfolio

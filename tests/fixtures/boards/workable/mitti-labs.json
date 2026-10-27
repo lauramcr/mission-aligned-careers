@@ -1,0 +1,122 @@
+{
+ "name": "Mitti Labs",
+ "description": null,
+ "jobs": [
+  {
+   "title": "Country Lead - Indonesia",
+   "shortcode": "0E6A03D634",
+   "code": "",
+   "employment_type": "",
+   "telecommuting": true,
+   "department": null,
+   "url": "https://apply.workable.com/j/0E6A03D634",
+   "shortlink": "https://apply.workable.com/j/0E6A03D634",
+   "application_url": "https://apply.workable.com/j/0E6A03D634/apply",
+   "published_on": "2026-05-12",
+   "created_at": "2026-05-08",
+   "country": "Indonesia",
+   "city": "",
+   "state": "",
+   "education": "",
+   "experience": "",
+   "function": "",
+   "industry": "",
+   "locations": [
+    {
+     "country": "Indonesia",
+     "countryCode": "ID",
+     "city": "",
+     "region": null,
+     "hidden": false
+    }
+   ]
+  },
+  {
+   "title": "Country Lead - Laos",
+   "shortcode": "3B100EFBE2",
+   "code": "",
+   "employment_type": "Full-time",
+   "telecommuting": true,
+   "department": null,
+   "url": "https://apply.workable.com/j/3B100EFBE2",
+   "shortlink": "https://apply.workable.com/j/3B100EFBE2",
+   "application_url": "https://apply.workable.com/j/3B100EFBE2/apply",
+   "published_on": "2026-10-06",
+   "created_at": "2026-10-06",
+   "country": "Lao People's Democratic Republic",
+   "city": "",
+   "state": "",
+   "education": "Bachelor's Degree",
+   "experience": "Mid-Senior level",
+   "function": "",
+   "industry": "",
+   "locations": [
+    {
+     "country": "Lao People's Democratic Republic",
+     "countryCode": "LA",
+     "city": "",
+     "region": null,
+     "hidden": false
+    }
+   ]
+  },
+  {
+   "title": "Country Lead - Thailand",
+   "shortcode": "081707AB22",
+   "code": "",
+   "employment_type": "Full-time",
+   "telecommuting": true,
+   "department": null,
+   "url": "https://apply.workable.com/j/081707AB22",
+   "shortlink": "https://apply.workable.com/j/081707AB22",
+   "application_url": "https://apply.workable.com/j/081707AB22/apply",
+   "published_on": "2026-10-06",
+   "created_at": "2026-10-06",
+   "country": "Thailand",
+   "city": "",
+   "state": "",
+   "education": "Bachelor's Degree",
+   "experience": "Mid-Senior level",
+   "function": "",
+   "industry": "",
+   "locations": [
+    {
+     "country": "Thailand",
+     "countryCode": "TH",
+     "city": "",
+     "region": null,
+     "hidden": false
+    }
+   ]
+  },
+  {
+   "title": "Policy Manager - South East Asia",
+   "shortcode": "842EE4A950",
+   "code": "",
+   "employment_type": "Full-time",
+   "telecommuting": true,
+   "department": null,
+   "url": "https://apply.workable.com/j/842EE4A950",
+   "shortlink": "https://apply.workable.com/j/842EE4A950",
+   "application_url": "https://apply.workable.com/j/842EE4A950/apply",
+   "published_on": "2026-10-06",
+   "created_at": "2026-10-06",
+   "country": "Singapore",
+   "city": "",
+   "state": "",
+   "education": "Bachelor's Degree",
+   "experience": "Mid-Senior level",
+   "function": "",
+   "industry": "",
+   "locations": [
+    {
+     "country": "Singapore",
+     "countryCode": "SG",
+     "city": "",
+     "region": null,
+     "hidden": false
+    }
+   ]
+  }
+ ]
+}

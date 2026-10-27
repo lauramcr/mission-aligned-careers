@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mission-Aligned Careers</title>
+<style>
+  :root { --bg: #fbfbfa; --fg: #1f2328; --muted: #656d76; --line: #d8dee4; --card: #ffffff;
+          --accent: #1a7f37; --warn: #9a6700; --bad: #cf222e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0d1117; --fg: #e6edf3; --muted: #8d96a0; --line: #30363d; --card: #161b22;
+            --accent: #3fb950; --warn: #d29922; --bad: #f85149; }
+  }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg);
+         font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 28px 0 8px; }
+  .muted { color: var(--muted); }
+  .updated { margin: 0 0 8px; }
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+            margin: 8px 0; }
+  summary { cursor: pointer; padding: 10px 12px; font-weight: 600; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 6px 10px; border-top: 1px solid var(--line);
+           vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  a { color: inherit; }
+  .score { font-weight: 600; }
+  .ok { color: var(--accent); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+  .small { font-size: 12px; }
+  .empty { padding: 0 12px 12px; }
+  .demo { border: 1px solid var(--warn); border-radius: 8px; padding: 10px 12px;
+          margin: 8px 0 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Mission-Aligned Careers</h1>
+  {% if demo %}
+  <p class="demo"><strong class="warn">Demo data.</strong> Everything here is fictional: the
+    person (Alex Martin), the companies and their job postings, replayed from recordings in
+    <code>demo/</code>. Company and job links point to made-up <code>.example</code> addresses,
+    so they won't open. Run Mission-Aligned Careers on your own data to get real companies and roles.</p>
+  {% endif %}
+  <p class="updated">
+    {% if runs %}Last updated
+      {% for pipeline, finished in runs %}<span>· {{ pipeline }} {{ finished }}</span> {% endfor %}
+    {% else %}<span class="muted">No run yet.</span>{% endif %}
+  </p>
+  <p class="muted small">
+    {{ counts.companies }} companies scored · {{ counts.roles }} open roles at followed companies
+    {% if not has_cv %}· no CV found ({{ cv_path }}): roles are not ranked by CV fit{% endif %}
+  </p>
+
+  <h2>Companies</h2>
+  {% for key, title, open in company_sections %}
+  {% set rows = companies[key] %}
+  <details id="companies-{{ key }}" {% if open %}open{% endif %}>
+    <summary>{{ title }} ({{ rows|length }})</summary>
+    {% if rows %}
+    <div class="scroll"><table>
+      <tr><th>#</th><th>Company</th><th>Overall</th><th>Impact · practical · career</th>
+          <th>Careers page</th><th>What it does</th><th>Why</th></tr>
+      {% for c in rows %}
+      <tr>
+        <td class="num muted">{{ loop.index }}</td>
+        <td><a href="{{ c.website }}" target="_blank" rel="noopener">{{ c.name }}</a>
+            {% if c.on_your_list %}<span class="muted small">· your list</span>{% endif %}</td>
+        <td class="num score">{{ "%.2f"|format(c.overall) }}</td>
+        <td class="num">{{ "%g"|format(c.impact) }} · {{ "%g"|format(c.practical) }} · {{ "%g"|format(c.career) }}</td>
+        <td class="{{ 'ok' if c.careers_page in ('linked', 'found by trying') else 'warn' if c.careers_page == 'missing' else 'muted' }}">{{ c.careers_page }}</td>
+        <td>{{ c.description }}</td>
+        <td class="small">{{ c.reason }}{% if c.flags %} <span class="warn">⚑ {{ c.flags|join(", ") }}</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </table></div>
+    {% else %}<p class="empty muted">None.</p>{% endif %}
+  </details>
+  {% endfor %}
+
+  <h2>Roles</h2>
+  {% for key, title, open in role_sections %}
+  {% set rows = roles[key] %}
+  <details id="roles-{{ key }}" {% if open %}open{% endif %}>
+    <summary>{{ title }} ({{ rows|length }})</summary>
+    {% if rows %}
+    <div class="scroll"><table>
+      <tr><th>#</th><th>Role</th><th>Company</th><th>Where</th><th>Family</th>
+          <th>CV fit</th><th>Why</th><th>First seen</th></tr>
+      {% for r in rows %}
+      <tr>
+        <td class="num muted">{{ loop.index }}</td>
+        <td><a href="{{ r.posting.url }}" target="_blank" rel="noopener">{{ r.posting.title }}</a></td>
+        <td>{{ r.company_name }}</td>
+        <td>{{ r.posting.location or "—" }}{% if r.posting.remote.value != "unknown" %} · {{ r.posting.remote.value }}{% endif %}</td>
+        <td>{{ family_label(r.decision.family) }}</td>
+        <td class="small">
+          {% if r.cv_fit is none %}<span class="muted">—</span>
+          {% elif r.cv_fit.score is none %}<span class="muted">title only</span>
+          {% else %}<span class="score">{{ "%.1f"|format(r.cv_fit.score) }}</span>
+            {% if r.cv_fit.matched %}<br><span class="ok">✓ {{ r.cv_fit.matched|join(", ") }}</span>{% endif %}
+            {% if r.cv_fit.missing %}<br><span class="warn">✗ {{ r.cv_fit.missing|join(", ") }}</span>{% endif %}
+          {% endif %}
+        </td>
+        <td class="small">{{ r.decision.reason }}</td>
+        <td class="num small">{{ r.posting.first_seen_at.strftime("%Y-%m-%d") }}</td>
+      </tr>
+      {% endfor %}
+    </table></div>
+    {% else %}<p class="empty muted">None right now.</p>{% endif %}
+  </details>
+  {% endfor %}
+
+  {% if mentions %}
+  <details id="roles-mentions">
+    <summary>Mentioned on careers pages ({{ mentions|length }})</summary>
+    <div class="scroll"><table>
+      <tr><th>Company</th><th>Line on the page</th><th>Family</th></tr>
+      {% for m in mentions %}
+      <tr><td>{{ m.company_name }}</td>
+          <td><a href="{{ m.url }}" target="_blank" rel="noopener">{{ m.line }}</a></td>
+          <td>{{ family_label(m.family) }}</td></tr>
+      {% endfor %}
+    </table></div>
+  </details>
+  {% endif %}
+
+  {% if pending %}
+  <h2>Waiting for your input</h2>
+  <details id="pending" open>
+    <summary>Companies the tool couldn't resolve ({{ pending|length }})</summary>
+    <p class="empty muted small">Add the missing website in
+      <code>config/companies_pending.csv</code>, then run <code>radar companies import</code>.</p>
+    <div class="scroll"><table>
+      <tr><th>Company</th><th>Why</th><th>Since</th></tr>
+      {% for p in pending %}
+      <tr><td>{{ p.name }}</td><td class="small">{{ p.reason }}</td>
+          <td class="num small">{{ p.added_on.isoformat() }}</td></tr>
+      {% endfor %}
+    </table></div>
+  </details>
+  {% endif %}
+
+  <p class="muted small">API: <a href="/docs">/docs</a> · data refreshes with each run
+    (CLI, Dagster or <code>POST /runs/weekly_radar</code>).</p>
+</main>
+</body>
+</html>

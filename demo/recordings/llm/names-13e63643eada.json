@@ -1,0 +1,68 @@
+{
+  "purpose": "names",
+  "key": "sha256:02796f83070e23fd2890851f07662aa00d831ad0be91d6f099910b51201d6cbe",
+  "recorded_by": "hand-written sample (replace with `radar demo record` once Claude Code is installed)",
+  "model": "",
+  "output": [
+    {
+      "name": "Voltaïa",
+      "website": "https://voltaia.example",
+      "context": "grid flexibility, they use dbt",
+      "kind": "company"
+    },
+    {
+      "name": "Boucle",
+      "website": null,
+      "context": "marketplace for refurbished phones, recruiting in data",
+      "kind": "company"
+    },
+    {
+      "name": "Canopée Data",
+      "website": null,
+      "context": "forest monitoring from satellites, remote-friendly",
+      "kind": "company"
+    },
+    {
+      "name": "Fonds Vert Avenir",
+      "website": "https://fondsvertavenir.example/portfolio",
+      "context": "climate fund; their portfolio page lists their start-ups",
+      "kind": "fund"
+    },
+    {
+      "name": "Lab Climat",
+      "website": null,
+      "context": "accelerator, demo day in March, cohort page on their site",
+      "kind": "accelerator"
+    },
+    {
+      "name": "AdBoost",
+      "website": null,
+      "context": "met at the coffee stand, not climate",
+      "kind": "company"
+    },
+    {
+      "name": "Mareo",
+      "website": null,
+      "context": "ocean carbon removal, based in Lisbon",
+      "kind": "company"
+    },
+    {
+      "name": "PetroSense",
+      "website": null,
+      "context": "AI for upstream oil & gas",
+      "kind": "company"
+    },
+    {
+      "name": "HeatLoop",
+      "website": null,
+      "context": "Berlin; looking for a data analyst",
+      "kind": "company"
+    },
+    {
+      "name": "ChangeNOW Paris",
+      "website": null,
+      "context": "the event where these notes were taken",
+      "kind": "event"
+    }
+  ]
+}

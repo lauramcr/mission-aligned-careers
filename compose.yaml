@@ -1,0 +1,69 @@
+# docker compose up  ->  runs the offline demo, then the Dagster UI (:3000) and the API (:8000).
+#
+# Default: the fictional demo world (demo/ in, demo-run/ out, pages and model answers replayed).
+# Your own data: cp .env.personal.example .env  (config/ and data/, live web, free keyword facts;
+# Claude Code is not available inside the container — run `radar` on your Mac for that).
+
+name: mission-aligned-careers
+
+x-radar: &radar
+  build: .
+  image: mission-aligned-careers:local
+  environment:
+    JOB_RADAR_CRITERIA: ${JOB_RADAR_CRITERIA:-demo/criteria.yaml}
+    JOB_RADAR_COMPANIES: ${JOB_RADAR_COMPANIES:-demo/companies.csv}
+    JOB_RADAR_PENDING: ${JOB_RADAR_PENDING:-demo-run/companies_pending.csv}
+    JOB_RADAR_SOURCES: ${JOB_RADAR_SOURCES:-demo/sources.yaml}
+    JOB_RADAR_DECISIONS: ${JOB_RADAR_DECISIONS:-demo-run/decisions.csv}
+    JOB_RADAR_DB: ${JOB_RADAR_DB:-demo-run/radar.duckdb}
+    JOB_RADAR_REPORTS: ${JOB_RADAR_REPORTS:-demo-run/reports}
+    JOB_RADAR_SCORES_CSV: ${JOB_RADAR_SCORES_CSV:-demo-run/scores.csv}
+    JOB_RADAR_CACHE: ${JOB_RADAR_CACHE:-demo-run/cache}
+    JOB_RADAR_CV: ${JOB_RADAR_CV:-demo/cv.md}
+    JOB_RADAR_REPLAY_DIR: ${JOB_RADAR_REPLAY_DIR-demo}   # empty in .env = live web
+    JOB_RADAR_DAGSTER_HOST: dagster
+    DAGSTER_HOME: /app/dagster-home
+  volumes:
+    - ./demo-run:/app/demo-run
+    - ./data:/app/data
+    - ./config:/app/config
+
+services:
+  demo:
+    <<: *radar
+    command: ["demo", "--workspace", "demo-run"]
+
+  dagster:
+    <<: *radar
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        mkdir -p "$$DAGSTER_HOME" &&
+        printf 'telemetry:\n  enabled: false\ncode_servers:\n  local_startup_timeout: 180\n' > "$$DAGSTER_HOME/dagster.yaml" &&
+        exec dagster dev -h 0.0.0.0 -p 3000 -m job_radar.orchestration.definitions
+    ports: ["3000:3000"]
+    volumes:
+      - ./demo-run:/app/demo-run
+      - ./data:/app/data
+      - ./config:/app/config
+      - dagster-home:/app/dagster-home
+    depends_on:
+      demo: {condition: service_completed_successfully}
+    restart: unless-stopped
+
+  api:
+    <<: *radar
+    entrypoint: ["uvicorn"]
+    command: ["job_radar.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports: ["8000:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      demo: {condition: service_completed_successfully}
+    restart: unless-stopped
+
+volumes:
+  dagster-home:
