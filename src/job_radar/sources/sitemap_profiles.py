@@ -15,11 +15,12 @@ from job_radar.sources.list_page import (
     ListResult,
     ListSource,
     _domain,
+    fetch_text,
     register_list_reader,
     website_from_detail_page,
 )
 from job_radar.watch.page_text import page_snapshot
-from job_radar.web.http import FetchError, HttpClient, RobotsDisallowedError
+from job_radar.web.http import HttpClient
 
 _LOC = re.compile(r"<loc>\s*([^<\s]+)\s*</loc>")
 MAX_DESCRIPTION = 500
@@ -58,12 +59,12 @@ def parse_profile(html: str, url: str) -> Profile:
 def read_sitemap_profiles(source: ListSource, http: HttpClient) -> ListResult:
     """Read every profile in the sitemap, keeping only the categories you selected."""
     result = ListResult()
-    sitemap = _get(http, source.url, result)
+    sitemap = fetch_text(http, source.url, result)
     if sitemap is None:
         return result
     wanted = {c.lower() for c in source.include_categories}
     for url in profile_urls(sitemap):
-        html = _get(http, url, None)
+        html = fetch_text(http, url)
         if html is None:
             continue
         profile = parse_profile(html, url)
@@ -80,20 +81,3 @@ def read_sitemap_profiles(source: ListSource, http: HttpClient) -> ListResult:
     if not result.companies and not result.unresolved and not result.skipped:
         result.error = result.error or "no profiles found in the sitemap"
     return result
-
-
-def _get(http: HttpClient, url: str, result: ListResult | None) -> str | None:
-    reason = None
-    try:
-        response = http.get(url)
-    except RobotsDisallowedError:
-        reason = "the site's robots.txt asks tools not to read it"
-    except FetchError as exc:
-        reason = exc.reason
-    else:
-        if response.status_code == 200:
-            return response.text
-        reason = f"HTTP {response.status_code}"
-    if result is not None:
-        result.error = reason
-    return None

@@ -1,13 +1,22 @@
 """Command-line interface (`radar`)."""
 
+import logging
 import os
-from datetime import UTC, datetime, timedelta
+import sys
+import threading
+import time
+import webbrowser
+from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
 import typer
+import uvicorn
 
 from job_radar import __version__
+from job_radar.api.app import ApiSettings, create_app
+from job_radar.api.serve import open_when_up
 from job_radar.enrich.extractor import (
     DEFAULT_MODEL,
     ClaudeCodeExtractor,
@@ -20,36 +29,40 @@ from job_radar.enrich.replay import (
     RecordingStore,
 )
 from job_radar.enrich.resolve import ClaudeCodeNameExtractor
-from job_radar.enrich.select import select_add_routes, select_extractor
+from job_radar.enrich.select import model_line, select_add_routes, select_extractor
 from job_radar.enrich.usage import UsageRecorder
-from job_radar.matching.roles import RoleOutcome
+from job_radar.logs import FILE_ONLY, setup_logging
 from job_radar.notify.discover_report import write_discover_report
-from job_radar.notify.roles_report import write_roles_report
 from job_radar.notify.scores_csv import export_scores
 from job_radar.pipeline.add import run_add
-from job_radar.pipeline.demo import replay_routes, run_demo
-from job_radar.pipeline.discover import DEFAULT_EXTRACTION_LIMIT, run_discover
-from job_radar.pipeline.doctor import DoctorPaths, diagnose
+from job_radar.pipeline.decide import CompanyNotFoundError, apply_decision, find_company
+from job_radar.pipeline.demo import prepare_demo, replay_routes, run_demo
+from job_radar.pipeline.doctor import Check, DoctorPaths, diagnose, next_step
 from job_radar.pipeline.find_careers import run_find_careers
-from job_radar.pipeline.roles import run_roles
+from job_radar.pipeline.setup_page import start_config
+from job_radar.pipeline.start import NothingToScoreError, StartResult, run_start
 from job_radar.pipeline.watch import run_import
 from job_radar.profile.loader import ProfileError, load_profile
 from job_radar.profile.models import Profile
 from job_radar.scoring.decide import Outcome
-from job_radar.settings import DEFAULTS, read_cv
+from job_radar.settings import DEFAULTS, RadarPaths
 from job_radar.sources.added import parse_args, parse_csv
 from job_radar.sources.decisions_csv import load_decisions
-from job_radar.sources.list_page import load_sources
 from job_radar.storage.duckdb_repository import DuckDBRepository
-from job_radar.web.http import DiskCache, HttpxClient
+from job_radar.web.http import CACHE_KEEP_SECONDS, DiskCache, HttpxClient
 
-app = typer.Typer(help="Mission-Aligned Careers: discover, score and watch companies and roles.")
+app = typer.Typer(
+    help="Mission-Aligned Careers: discover, score and watch companies and roles.",
+    invoke_without_command=True,
+)
 profile_app = typer.Typer(help="Inspect and validate your criteria and domain pack.")
 companies_app = typer.Typer(help="Your company list and the pending (unresolved) list.")
 db_app = typer.Typer(help="Query the local database.")
 app.add_typer(profile_app, name="profile")
 app.add_typer(companies_app, name="companies")
 app.add_typer(db_app, name="db")
+
+log = logging.getLogger(__name__)
 
 DEFAULT_CRITERIA = DEFAULTS.criteria
 DEFAULT_PACKS = DEFAULTS.packs
@@ -60,9 +73,15 @@ DEFAULT_DIGESTS = DEFAULTS.reports
 DEFAULT_CACHE = DEFAULTS.cache
 DEFAULT_SOURCES = DEFAULTS.sources
 DEFAULT_DECISIONS = DEFAULTS.decisions
-CACHE_TTL_SECONDS = 12 * 3600
 
 CriteriaOpt = Annotated[Path, typer.Option(help="Your criteria file.")]
+UseLlmOpt = Annotated[
+    bool,
+    typer.Option(
+        "--use-llm",
+        help="Use Claude Code (your subscription) for websites and facts. Off by default.",
+    ),
+]
 PacksOpt = Annotated[Path, typer.Option(help="Folder containing domain packs.")]
 CompaniesOpt = Annotated[Path, typer.Option(help="Your company list (CSV).")]
 PendingOpt = Annotated[Path, typer.Option(help="Unresolved companies (CSV).")]
@@ -77,12 +96,34 @@ def _version(value: bool) -> None:
 
 @app.callback()
 def main(
+    ctx: typer.Context,
     version: Annotated[
         bool,
         typer.Option("--version", callback=_version, is_eager=True, help="Show version and exit."),
     ] = False,
+    verbose: Annotated[
+        bool,
+        typer.Option(
+            "--verbose", "-v", help="Show every detail on screen (each web request, cached pages)."
+        ),
+    ] = False,
 ) -> None:
-    """Mission-Aligned Careers command line."""
+    """Mission-Aligned Careers command line. On its own (`uv run radar`): your setup checklist
+    and what to do next. Every command appends to data/logs/radar.log."""
+    log_file = RadarPaths.from_env(os.environ).log_file
+    setup_logging(log_file, verbose=verbose)
+    typed = sys.argv[1:] if Path(sys.argv[0]).name == "radar" else [ctx.invoked_subcommand or ""]
+    command = " ".join(["radar", *typed]).strip()
+    log.info("%s started (version %s)", command, __version__, extra=FILE_ONLY)
+    started = time.monotonic()
+    ctx.call_on_close(
+        lambda: log.info(
+            "%s finished in %.1f s", command, time.monotonic() - started, extra=FILE_ONLY
+        )
+    )
+    if ctx.invoked_subcommand is None:
+        checks = _checklist()
+        typer.echo(f"\n{next_step(checks)}")
 
 
 @profile_app.command("check")
@@ -96,8 +137,7 @@ def profile_check(
     except ProfileError as exc:
         typer.echo(str(exc))
         if not criteria.is_file():
-            example = criteria.with_name("criteria.example.yaml")
-            typer.echo(f"\nTip: start from the example: cp {example} {criteria}")
+            typer.echo("\nTip: run `uv run radar setup` to create it (a few short questions).")
         raise typer.Exit(code=1) from exc
     typer.echo(_summary(criteria, profile))
 
@@ -118,6 +158,19 @@ def _summary(criteria_path: Path, profile: Profile) -> str:
             f"  Weights: impact {w.impact:g} · career {w.career:g} · practical {w.practical:g}",
         ]
     )
+
+
+def _say_model(use_llm: bool, missing: str | None) -> None:
+    """Print which model mode this run uses; stop if --use-llm was asked but can't be honoured."""
+    line = model_line(use_llm=use_llm, missing=missing)
+    typer.echo(line)
+    log.info(line, extra=FILE_ONLY)
+    if use_llm and missing:
+        typer.echo(
+            "Install Claude Code and sign in (docs/LLM.md), or run without "
+            "--use-llm for free keyword facts."
+        )
+        raise typer.Exit(code=1)
 
 
 def _load_profile_or_exit(criteria: Path, packs_dir: Path) -> Profile:
@@ -175,82 +228,6 @@ def db_query(sql: str, db: DbOpt = DEFAULT_DB) -> None:
         typer.echo(" | ".join("" if v is None else str(v) for v in row))
 
 
-@app.command("discover")
-def discover_command(
-    criteria: CriteriaOpt = DEFAULT_CRITERIA,
-    packs_dir: PacksOpt = DEFAULT_PACKS,
-    companies: CompaniesOpt = DEFAULT_COMPANIES,
-    pending: PendingOpt = DEFAULT_PENDING,
-    db: DbOpt = DEFAULT_DB,
-    sources: Annotated[
-        Path, typer.Option(help="Pages listing companies (YAML).")
-    ] = DEFAULT_SOURCES,
-    decisions: Annotated[
-        Path, typer.Option(help="Your follow/reject decisions (CSV).")
-    ] = DEFAULT_DECISIONS,
-    reports: Annotated[Path, typer.Option(help="Where reports are written.")] = DEFAULT_DIGESTS,
-    limit: Annotated[
-        int, typer.Option(help="Max companies read by Claude this run.")
-    ] = DEFAULT_EXTRACTION_LIMIT,
-    model: Annotated[str, typer.Option(help="Claude model for fact extraction.")] = DEFAULT_MODEL,
-    llm: Annotated[bool, typer.Option(help="Use Claude to extract facts.")] = True,
-    force_lists: Annotated[
-        bool, typer.Option(help="Re-read list pages even if read in the last 30 days.")
-    ] = False,
-) -> None:
-    """Find companies on your lists, learn what they do, score them, follow the best."""
-    profile = _load_profile_or_exit(criteria, packs_dir)
-    repo = DuckDBRepository(db)
-    _import(repo, companies, pending)
-    try:
-        list_sources = load_sources(sources)
-        user_decisions = load_decisions(decisions)
-    except ValueError as exc:
-        typer.echo(str(exc))
-        raise typer.Exit(code=1) from exc
-    if not list_sources:
-        typer.echo(f"No lists in {sources} yet; scoring your own companies only.")
-
-    recorder = UsageRecorder()
-    choice = select_extractor(profile.taxonomy, use_llm=llm, model=model, recorder=recorder)
-    extractor, missing = choice.extractor, choice.missing
-    if llm and missing:
-        typer.echo(f"Note: {missing}")
-    if choice.rough:
-        typer.echo("Using free keyword facts (rough, low confidence) instead of Claude.")
-
-    disk_cache = DiskCache(DEFAULT_CACHE, ttl_seconds=CACHE_TTL_SECONDS)
-    with HttpxClient(cache=disk_cache) as http, repo.session():
-        result = run_discover(
-            repo,
-            http,
-            profile,
-            extractor,
-            sources=list_sources,
-            decisions=user_decisions,
-            pending_csv=pending,
-            now=datetime.now(UTC),
-            extraction_limit=limit,
-            extractor_missing=missing,
-            force_lists=force_lists,
-            recorder=recorder,
-        )
-    path = write_discover_report(result, reports)
-    followed = sum(
-        i.outcome is Outcome.FOLLOW and not i.known and i.reason != "you chose to follow it"
-        for i in result.items
-    )
-    review = sum(i.outcome is Outcome.REVIEW for i in result.items)
-    typer.echo(
-        f"{len(result.items)} companies · {result.extracted} read by Claude · "
-        f"{followed} now watched automatically · {review} worth a look · "
-        f"{result.waiting} waiting · {len(result.errors)} problems"
-    )
-    if result.usage and result.usage.calls:
-        typer.echo(f"Claude usage: {result.usage.describe()}")
-    typer.echo(f"Report written to {path}")
-
-
 @companies_app.command("scores")
 def companies_scores(
     db: DbOpt = DEFAULT_DB,
@@ -262,6 +239,8 @@ def companies_scores(
         Path | None,
         typer.Option("--csv", help="Also write every scored company to this CSV file."),
     ] = None,
+    criteria: CriteriaOpt = DEFAULT_CRITERIA,
+    packs_dir: PacksOpt = DEFAULT_PACKS,
 ) -> None:
     """Ranked company scores: overall, impact, practical, career, outcome, flags."""
     repo = DuckDBRepository(db)
@@ -276,7 +255,9 @@ def companies_scores(
             f"{a.practical_fit:6.2f} {a.career_fit:6.2f}  {r.outcome:9} {', '.join(a.flags)}"
         )
     if csv_path is not None:
-        typer.echo(f"All scored companies written to {export_scores(repo, csv_path)}")
+        profile = _load_profile_or_exit(criteria, packs_dir)
+        written = export_scores(repo, csv_path, profile=profile)
+        typer.echo(f"All scored companies written to {written}")
 
 
 @companies_app.command("find-careers")
@@ -289,7 +270,7 @@ def companies_find_careers(
     """Try the usual careers addresses (/careers, /jobs, /carrieres...) for companies flagged
     as having no careers page: yours, followed and worth-a-look ones. Only runs when you ask."""
     repo = DuckDBRepository(db)
-    disk_cache = DiskCache(DEFAULT_CACHE, ttl_seconds=CACHE_TTL_SECONDS)
+    disk_cache = DiskCache(DEFAULT_CACHE)
     with HttpxClient(cache=disk_cache) as http, repo.session():
         result = run_find_careers(repo, http, now=datetime.now(UTC), names=names)
     for found in result.found:
@@ -298,104 +279,238 @@ def companies_find_careers(
     for company in result.already_known:
         typer.echo(f"{company.name}: careers page already known")
     for company in result.not_read_yet:
-        typer.echo(f"{company.name}: website not read yet (run `radar discover` first)")
+        typer.echo(f"{company.name}: website not read yet (run `radar start` first)")
     tried = len(result.found) + len(result.not_found)
     typer.echo(f"Found {len(result.found)} careers pages out of {tried} companies tried.")
     if result.not_found:
         typer.echo("Not found: " + ", ".join(c.name for c in result.not_found))
 
 
-@app.command("roles")
-def roles_command(
-    criteria: CriteriaOpt = DEFAULT_CRITERIA,
-    packs_dir: PacksOpt = DEFAULT_PACKS,
-    companies: CompaniesOpt = DEFAULT_COMPANIES,
-    pending: PendingOpt = DEFAULT_PENDING,
-    db: DbOpt = DEFAULT_DB,
-    reports: Annotated[Path, typer.Option(help="Where reports are written.")] = DEFAULT_DIGESTS,
-    force: Annotated[
-        bool, typer.Option(help="Check every company, even if checked recently.")
-    ] = False,
-    max_age_days: Annotated[
-        int, typer.Option(help="Re-check a company's jobs after this many days.")
-    ] = 7,
-    cv: Annotated[
-        Path, typer.Option(help="Your CV (text / Markdown) to rank roles by skills fit.")
-    ] = DEFAULTS.cv,
+class Choice(StrEnum):
+    """What `radar decide` can do with a company."""
+
+    FOLLOW = "follow"
+    REVIEW = "review"
+    REJECT = "reject"
+    AUTO = "auto"
+
+
+OUTCOME_WORDS = {
+    Outcome.FOLLOW: "followed",
+    Outcome.REVIEW: "worth a look",
+    Outcome.REJECTED: "rejected",
+}
+
+
+@app.command("decide")
+def decide_command(
+    company: Annotated[str, typer.Argument(help="Its name or website, e.g. Google or google.com")],
+    choice: Annotated[
+        Choice,
+        typer.Argument(help="follow · review (worth a look) · reject · auto (the rules decide)"),
+    ],
+    note: Annotated[str, typer.Option(help="Why, kept in config/decisions.csv.")] = "",
 ) -> None:
-    """Check due companies' jobs and sort all open roles: to watch / to review / rejected."""
-    profile = _load_profile_or_exit(criteria, packs_dir)
-    repo = DuckDBRepository(db)
-    _import(repo, companies, pending)
-    disk_cache = DiskCache(DEFAULT_CACHE, ttl_seconds=CACHE_TTL_SECONDS)
-    with HttpxClient(cache=disk_cache) as http, repo.session():
-        report = run_roles(
-            repo,
-            http,
-            profile,
-            now=datetime.now(UTC),
-            max_age=timedelta(days=max_age_days),
-            force=force,
-            cv_text=read_cv(cv),
-        )
-    path = write_roles_report(report, profile, reports)
-    watch = report.by_outcome(RoleOutcome.WATCH)
-    typer.echo(
-        f"{len(watch)} to watch ({sum(report.is_new(r) for r in watch)} new) · "
-        f"{len(report.by_outcome(RoleOutcome.REVIEW)) + len(report.page_mentions)} to review · "
-        f"{len(report.by_outcome(RoleOutcome.REJECTED))} rejected · "
-        f"checked {report.checked} companies, {report.up_to_date} up to date"
+    """Move a company to another list, or back to automatic: saved in config/decisions.csv and
+    applied at once (rejecting or "worth a look" also stops watching its jobs)."""
+    profile = _load_profile_or_exit(DEFAULT_CRITERIA, DEFAULT_PACKS)
+    repo = DuckDBRepository(DEFAULT_DB)
+    with repo.session():
+        matches = find_company(repo, company)
+        if not matches:
+            typer.echo(f"No company matches '{company}'. Try its website, e.g. google.com.")
+            raise typer.Exit(code=1)
+        if len(matches) > 1:
+            typer.echo(f"'{company}' matches several companies; use the website:")
+            for match in matches[:10]:
+                typer.echo(f"  {match.name}: {match.website}")
+            raise typer.Exit(code=1)
+        target = matches[0]
+        try:
+            applied = apply_decision(
+                repo,
+                profile,
+                DEFAULT_DECISIONS,
+                target.company_id,
+                choice.value,
+                note=note,
+                now=datetime.now(UTC),
+                companies_csv=DEFAULT_COMPANIES,
+            )
+        except CompanyNotFoundError as exc:  # removed between the search and now
+            typer.echo(f"No company {exc}.")
+            raise typer.Exit(code=1) from exc
+    outcome = applied.decision.outcome
+    words = OUTCOME_WORDS.get(outcome, str(outcome))
+    when = "" if applied.scored else " (not scored yet: shown after the next run)"
+    typer.echo(f"{target.name} ({target.company_id}) → {words}: {applied.decision.reason}{when}")
+
+
+def _checklist() -> list[Check]:
+    """Print the setup checklist (✓ ok · ! optional or worth a look · ✗ missing)."""
+    paths = DoctorPaths(
+        criteria=DEFAULT_CRITERIA,
+        packs=DEFAULT_PACKS,
+        companies=DEFAULT_COMPANIES,
+        sources=DEFAULT_SOURCES,
+        decisions=DEFAULT_DECISIONS,
+        db=DEFAULT_DB,
+        cv=DEFAULTS.cv,
     )
-    typer.echo(f"Report written to {path}")
-
-
-@app.command("doctor")
-def doctor_command(
-    criteria: CriteriaOpt = DEFAULT_CRITERIA,
-    packs_dir: PacksOpt = DEFAULT_PACKS,
-    companies: CompaniesOpt = DEFAULT_COMPANIES,
-    db: DbOpt = DEFAULT_DB,
-) -> None:
-    """Check your setup: Claude Code (or the free route), config files, database."""
-    checks = diagnose(
-        DoctorPaths(
-            criteria=criteria,
-            packs=packs_dir,
-            companies=companies,
-            sources=DEFAULT_SOURCES,
-            decisions=DEFAULT_DECISIONS,
-            db=db,
-        ),
-        env=os.environ,
+    checks = diagnose(paths, env=os.environ)
+    typer.echo(
+        f"Looking in {DEFAULT_CRITERIA.parent}/ for your setup files "
+        "(✓ ready · ! optional or worth a look · ✗ needed):"
     )
     marks = {"ok": "✓", "warn": "!", "fail": "✗"}
     for check in checks:
         typer.echo(f"{marks[check.status]} {check.name:15} {check.detail}")
-    if any(c.status == "fail" for c in checks):
+        if check.purpose:
+            typer.secho(f"  {'':15} {check.purpose}", dim=True)
+    return checks
+
+
+TEMPLATES = Path("config_templates")
+
+
+@app.command("setup")
+def setup_command(
+    use_llm: UseLlmOpt = False,
+    port: Annotated[int, typer.Option(help="Port for the setup page.")] = 8000,
+    browser: Annotated[bool, typer.Option(help="Open the page in your browser.")] = True,
+    tour: Annotated[
+        bool,
+        typer.Option(
+            "--tour", "--orientation", help="Show the page's tour, even if you've seen it."
+        ),
+    ] = False,
+) -> None:
+    """Set up your profile in a page in your browser: CV, preferences, lists, companies you know,
+    then save and run. Safe to re-run: it shows what you have, and nothing is deleted."""
+    paths = RadarPaths.from_env(os.environ)
+    for path in start_config(paths, TEMPLATES):
+        typer.echo(f"  created {path}")
+    settings = ApiSettings.from_paths(paths, use_llm=use_llm)
+    typer.echo(f"Your setup: http://localhost:{port}/setup   (saved in {paths.criteria.parent}/)")
+    _serve(port, browser, settings, tour, path="/setup")
+
+
+@app.command("start")
+def start_command(
+    use_llm: UseLlmOpt = False,
+    force: Annotated[
+        bool, typer.Option(help="Re-read every list and job board now, even if read recently.")
+    ] = False,
+    port: Annotated[int, typer.Option(help="Port for the dashboard.")] = 8000,
+    browser: Annotated[bool, typer.Option(help="Open the dashboard in your browser.")] = True,
+    tour: Annotated[
+        bool,
+        typer.Option(
+            "--tour", "--orientation", help="Show the dashboard's tour, even if you've seen it."
+        ),
+    ] = False,
+) -> None:
+    """Run it on your own data, like the demo: everything that is due (lists and websites every
+    30 days, job boards every 7), then the dashboard. Ctrl+C stops the dashboard."""
+    if not DEFAULT_CRITERIA.is_file():
+        typer.echo(f"{DEFAULT_CRITERIA} not found. Set up your profile first: uv run radar setup")
         raise typer.Exit(code=1)
+    profile = _load_profile_or_exit(DEFAULT_CRITERIA, DEFAULT_PACKS)
+    recorder = UsageRecorder()
+    choice = select_extractor(profile.taxonomy, use_llm=use_llm, recorder=recorder)
+    _say_model(use_llm, choice.missing)
+    disk_cache = DiskCache(DEFAULT_CACHE)
+    try:
+        with HttpxClient(cache=disk_cache) as http:
+            result = run_start(
+                DEFAULTS,
+                http,
+                choice.extractor,
+                now=datetime.now(UTC),
+                force=force,
+                extractor_missing=choice.missing,
+                recorder=recorder,
+            )
+    except (NothingToScoreError, ValueError) as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(code=1) from exc
+    disk_cache.prune(CACHE_KEEP_SECONDS)  # after the run: only pages it didn't need go
+    _summary_of_run(result)
+    _serve(port, browser, ApiSettings.from_env(os.environ), tour)
+
+
+def _summary_of_run(result: StartResult) -> None:
+    """What a run found, the same for `radar start` and `radar demo`."""
+    typer.echo(f"\n{result.summary()}")
+    if suggestions := result.ran.roles.suggestions:
+        typer.echo(
+            "💡 Many open roles are in families that aren't yours: "
+            + ", ".join(f"{s.label} ({s.roles})" for s in suggestions)
+            + " — add or exclude them with uv run radar setup"
+        )
+    for path in result.ran.reports:
+        typer.echo(f"  report: {path}")
+    typer.echo(f"  scores: {result.ran.scores_csv}")
+
+
+def _serve(
+    port: int, browser: bool, settings: ApiSettings, tour: bool = False, path: str = "/"
+) -> None:
+    """Serve the dashboard on this machine until Ctrl+C (opening the browser once it is up),
+    reading the files of this run (`settings`: yours, or the demo's copy). `tour`: the page
+    opens with the onboarding tour, even if you've seen it."""
+    url = f"http://localhost:{port}"
+    page = f"{url}{path}" + ("?tour=1" if tour else "")
+    if path == "/":
+        typer.echo(f"\nDashboard: {page}   (API docs: {url}/docs) — Ctrl+C to stop")
+    else:
+        typer.echo("Ctrl+C to stop")
+    if browser:
+        threading.Thread(target=_open_browser, args=(page, port), daemon=True).start()
+    uvicorn.run(create_app(settings), host="127.0.0.1", port=port, log_level="warning")
+
+
+def _open_browser(url: str, port: int) -> None:
+    """Open the dashboard as soon as the server answers (or say to open it by hand)."""
+    if not open_when_up(url, port, webbrowser.open):
+        typer.echo(f"The dashboard didn't answer within 30 s: open {url} once it is up.")
 
 
 @app.command("demo")
 def demo_command(
     workspace: Annotated[
-        Path, typer.Option(help="Throw-away folder for the demo's database and reports.")
+        Path, typer.Option(help="Throw-away folder for the demo's copy (config/ and data/).")
     ] = Path("demo-run"),
-    open_reports: Annotated[
-        bool, typer.Option("--open", help="Open the reports folder when done.")
+    port: Annotated[int, typer.Option(help="Port for the dashboard.")] = 8000,
+    browser: Annotated[bool, typer.Option(help="Open the dashboard in your browser.")] = True,
+    serve: Annotated[
+        bool, typer.Option(help="Serve the dashboard after the run (--no-serve: CI, Docker).")
+    ] = True,
+    tour: Annotated[
+        bool,
+        typer.Option(
+            "--tour", "--orientation", help="Show the dashboard's tour, even if you've seen it."
+        ),
     ] = False,
     record: Annotated[
         bool,
         typer.Option(
             "--record",
-            help="Re-record the model answers with Claude Code into demo/recordings/llm.",
+            help="Re-record the model answers with Claude Code into demo_config/recordings/llm.",
         ),
     ] = False,
     model: Annotated[str, typer.Option(help="Claude model (with --record).")] = DEFAULT_MODEL,
 ) -> None:
-    """Run the whole flow offline on the fictional demo kit (demo/): profile, messy notes ->
-    structured list, scores, careers pages, open roles. No account or network needed."""
-    demo_dir, packs = Path("demo"), DEFAULT_PACKS
+    """The tool on sample data: a copy of the fictional demo kit (demo_config/: Alex's CV,
+    criteria, companies, a fund's portfolio, messy notes) goes through the same run as
+    `radar start`, then the dashboard. Offline and no account needed (pages and model answers
+    are replayed); your clicks are saved in the copy."""
+    demo_dir, packs = Path("demo_config"), DEFAULT_PACKS
     routes = replay_routes(demo_dir, packs)
+    typer.echo(
+        "Mission-Aligned Careers demo — Alex Martin, a fictional person "
+        f"(a copy of demo_config/ in {workspace}/config/)"
+    )
     if record:
         try:
             claude = find_claude()
@@ -414,48 +529,39 @@ def demo_command(
         )
         typer.echo("Recording names and facts with Claude Code (websites stay hand-written:")
         typer.echo("the demo companies are fictional, so a web search can't find them).")
+    else:
+        line = "Model: replayed answers recorded with Claude Code (demo, no account needed)."
+        typer.echo(line)
+        log.info(line, extra=FILE_ONLY)
+    if not serve:  # CI, Docker: run now and print what it found
+        try:
+            result = run_demo(demo_dir, workspace, packs=packs, now=datetime.now(UTC), **routes)
+        except ValueError as exc:
+            typer.echo(str(exc))
+            raise typer.Exit(code=1) from exc
+        lists = ", ".join(s.name for s in result.added.discover.suggested_lists)
+        typer.echo(
+            f"\nYour notes (paste.txt) → {len(result.added.added)} companies"
+            + (f"; lists you could add: {lists}" if lists else "")
+        )
+        _summary_of_run(StartResult(result.ran, DuckDBRepository(result.paths.db).assessments()))
+        typer.echo(f"  report: {result.reports[0]}")  # the notes' report (the others are above)
+        if result.replay_misses:
+            typer.echo(
+                f"  note: no recording for {', '.join(result.replay_misses)} (free route used)"
+            )
+        return
     try:
-        result = run_demo(demo_dir, workspace, packs=packs, now=datetime.now(UTC), **routes)
+        paths = prepare_demo(demo_dir, workspace, packs)
     except ValueError as exc:
         typer.echo(str(exc))
         raise typer.Exit(code=1) from exc
-
-    items = result.discover.items
-
-    def count(outcome: Outcome) -> int:
-        return sum(i.outcome is outcome for i in items)
-
-    roles = result.roles
-    typer.echo("Mission-Aligned Careers demo — Alex Martin (fictional, see demo/cv.md)\n")
     typer.echo(
-        "1. Profile   demo/criteria.yaml: "
-        + ", ".join(load_profile(demo_dir / "criteria.yaml", packs).criteria.roles.target_families)
+        f"Alex's setup: http://localhost:{port}/setup   (read-only). Look around, then "
+        "Run the demo at the bottom of the page."
     )
-    lists = ", ".join(s.name for s in result.added.discover.suggested_lists)
-    typer.echo(
-        f"2. Notes     demo/paste.txt -> {len(result.added.added)} companies"
-        + (f"; lists you could add: {lists}" if lists else "")
-    )
-    typer.echo(
-        f"3. Scores    {len(items)} companies: {count(Outcome.FOLLOW)} followed, "
-        f"{count(Outcome.REVIEW)} worth a look, {count(Outcome.REJECTED)} rejected"
-    )
-    typer.echo(
-        f"4. Jobs      {len(roles.by_outcome(RoleOutcome.WATCH))} to watch, "
-        f"{len(roles.by_outcome(RoleOutcome.REVIEW)) + len(roles.page_mentions)} to review, "
-        f"{len(roles.unreadable)} to check by hand "
-        f"(careers pages found by trying: {len(result.careers.found)})"
-    )
-    typer.echo("")
-    for path in result.reports:
-        typer.echo(f"   report: {path}")
-    typer.echo(f"   scores: {result.scores_csv}")
-    if result.replay_misses:
-        typer.echo(f"   note: no recording for {', '.join(result.replay_misses)} (free route used)")
-    elif not record:
-        typer.echo("   model answers replayed from demo/recordings/llm (no account needed)")
-    if open_reports:
-        typer.launch(str(workspace / "reports"))
+    settings = ApiSettings.from_paths(paths, demo=True, setup_read_only=True)
+    _serve(port, browser, settings, tour, path="/setup")
 
 
 @app.command("add")
@@ -488,7 +594,7 @@ def add_command(
     ] = DEFAULT_DECISIONS,
     reports: Annotated[Path, typer.Option(help="Where reports are written.")] = DEFAULT_DIGESTS,
     model: Annotated[str, typer.Option(help="Claude model.")] = DEFAULT_MODEL,
-    llm: Annotated[bool, typer.Option(help="Use Claude to look up websites and facts.")] = True,
+    use_llm: UseLlmOpt = False,
 ) -> None:
     """Add companies by name, website, export file or pasted text; they are scored unless
     you pass --watch. Your notes are never sent to Claude; pasted text is."""
@@ -496,13 +602,11 @@ def add_command(
         typer.echo("--note and --referral need --watch: your notes stay on your own list.")
         raise typer.Exit(code=1)
     profile = _load_profile_or_exit(criteria, packs_dir)
+    recorder = UsageRecorder()
+    routes = select_add_routes(profile.taxonomy, use_llm=use_llm, model=model, recorder=recorder)
+    _say_model(use_llm, routes.missing)
     repo = DuckDBRepository(db)
     _import(repo, companies, pending)
-    recorder = UsageRecorder()
-
-    routes = select_add_routes(profile.taxonomy, use_llm=llm, model=model, recorder=recorder)
-    if llm and routes.missing:
-        typer.echo(f"Note: {routes.missing}")
 
     candidates = parse_args(companies_or_urls or [])
     pasted = [text] if text else []
@@ -518,7 +622,7 @@ def add_command(
         raise typer.Exit(code=1)
 
     source_label = label or (file.stem if file else ("pasted text" if text else "by you"))
-    disk_cache = DiskCache(DEFAULT_CACHE, ttl_seconds=CACHE_TTL_SECONDS)
+    disk_cache = DiskCache(DEFAULT_CACHE)
     with HttpxClient(cache=disk_cache) as http, repo.session():
         result = run_add(
             repo,
@@ -550,3 +654,13 @@ def add_command(
         typer.echo(f"Claude usage: {result.discover.usage.describe()}")
     path = write_discover_report(result.discover, reports, prefix="added", title="Added companies")
     typer.echo(f"Report written to {path}")
+
+
+def run() -> None:
+    """The `radar` command: the CLI, with any crash also written (with its traceback) to the
+    log file, so a long run that fails can be understood afterwards."""
+    try:
+        app()
+    except Exception:
+        log.exception("radar stopped with an error")
+        raise

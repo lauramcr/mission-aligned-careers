@@ -68,6 +68,7 @@ def test_norrsken_impact100() -> None:
     assert aerleum.website and "aerleum" in aerleum.website
     assert aerleum.description is not None
     assert "On Norrsken Impact/100" in aerleum.description and "France" in aerleum.description
+    assert aerleum.country == "France"  # from the list's geography
     assert all(c.source_name == "Norrsken Impact/100" for c in result.companies)
 
 
@@ -157,3 +158,26 @@ def test_headline_links_are_not_companies() -> None:
 def test_bare_domain_text_beats_unrelated_links() -> None:
     html = (LISTS / "serena-profile-electra.html").read_text()
     assert website_from_detail_page(html, ELECTRA) == "https://www.go-electra.com"
+
+
+# --- Y Combinator (companies page, embedded data) ---------------------------------------------
+
+YC = "https://www.ycombinator.com/companies/industry/climate"
+
+
+def test_ycombinator_reads_the_page_data() -> None:
+    http = FakeHttpClient({YC: ok(YC, (LISTS / "ycombinator-climate.html").read_text())})
+    source = ListSource(name="Y Combinator — climate", url=YC, type="ycombinator")
+    result = read_list(source, http)
+    assert result.error is None
+    assert [c.name for c in result.companies][:2] == ["Meteoric", "Rise Reforming"]
+    meteoric = result.companies[0]
+    assert meteoric.website == "https://meteoric.earth/" and meteoric.country == "US"
+    assert meteoric.description and "solar farms" in meteoric.description
+    assert [c.name for c in result.unresolved] == ["No Site Co"]  # no website: pending
+
+
+def test_ycombinator_page_without_data() -> None:
+    http = FakeHttpClient({YC: ok(YC, "<html><body>Sign in</body></html>")})
+    result = read_list(ListSource(name="YC", url=YC, type="ycombinator"), http)
+    assert result.error and "no company data" in result.error

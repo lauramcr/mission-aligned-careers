@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import httpx
@@ -296,3 +297,39 @@ def test_redirect_loop_on_robots_txt_means_disallow(clock: FakeClock) -> None:
 def test_invalid_url_is_a_fetch_error(clock: FakeClock) -> None:
     with pytest.raises(FetchError):
         make_client(clock).get("https://exa mple.com/")
+
+
+# --- what the log shows ---------------------------------------------------------------------
+
+
+@respx.mock
+def test_long_waits_are_explained_and_every_request_is_logged(
+    clock: FakeClock, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.DEBUG, logger="job_radar")
+    allow_all_robots(respx.mock)
+    page = respx.get(PAGE)
+    page.side_effect = [httpx.Response(429, headers={"Retry-After": "7"}), httpx.Response(200)]
+    cache = DiskCache(tmp_path, ttl_seconds=3600, clock=clock.time)
+    client = make_client(clock, cache=cache)
+    client.get(PAGE)
+    client.get(PAGE)
+
+    shown = [r.getMessage() for r in caplog.records if r.levelno >= logging.INFO]
+    assert shown == ["  waiting 7 s: acme.com answered HTTP 429, trying again"]
+    details = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
+    assert any(m.startswith(f"GET {PAGE} → 200") for m in details), details
+    assert f"GET {PAGE} → from cache" in details
+
+
+def test_old_pages_are_deleted_from_the_cache(clock: FakeClock, tmp_path: Path) -> None:
+    cache = DiskCache(tmp_path, ttl_seconds=3600, clock=clock.time)
+    cache.store("https://old.example/a", "old a")
+    cache.store("https://old.example/b", "old b")
+    clock.now += 31 * 86400
+    cache.store("https://new.example", "new")
+
+    assert cache.prune(max_age_seconds=30 * 86400) == 2
+    assert cache.load("https://old.example/a") is None
+    assert cache.load("https://new.example") is not None
+    assert DiskCache(tmp_path / "missing", ttl_seconds=1).prune(max_age_seconds=1) == 0

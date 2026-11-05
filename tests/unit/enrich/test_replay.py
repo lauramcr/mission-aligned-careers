@@ -26,7 +26,9 @@ PASTE = "Met the Voltaïa team (grid flexibility) and someone from Fonds Vert Av
 
 @pytest.fixture
 def taxonomy() -> Taxonomy:
-    return load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs").taxonomy
+    return load_profile(
+        REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs"
+    ).taxonomy
 
 
 @pytest.fixture
@@ -51,8 +53,8 @@ def test_names_are_recorded_then_replayed(store: RecordingStore) -> None:
 
 def test_unknown_text_falls_back_to_the_free_parser_and_says_so(store: RecordingStore) -> None:
     replay = ReplayNameExtractor(store)
-    found = replay.extract("Kanop\nhttps://wastetide.example")
-    assert {c.name or c.website for c in found} == {"Kanop", "https://wastetide.example"}
+    found = replay.extract("Google\nhttps://ikea.example")
+    assert {c.name or c.website for c in found} == {"Google", "https://ikea.example"}
     assert replay.misses == ["names"]
 
 

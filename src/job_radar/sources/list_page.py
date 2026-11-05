@@ -95,7 +95,7 @@ class ListSource(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
     name: str
     url: str
-    type: str = "page"  # page | norrsken_impact100 | sitemap_profiles
+    type: str = "page"  # page | norrsken_impact100 | sitemap_profiles | ycombinator
     include_categories: list[str] = []  # only for sources that label categories
 
     @field_validator("type")
@@ -151,6 +151,7 @@ class ListedCompany:
     source_name: str
     source_url: str
     description: str | None = None
+    country: str | None = None  # when the list says where the company is
 
 
 @dataclass
@@ -169,6 +170,11 @@ ListReaderFn = Callable[["ListSource", HttpClient], ListResult]
 _READERS: dict[str, ListReaderFn] = {}
 
 
+def list_types() -> list[str]:
+    """The list types sources.yaml can name (page, norrsken_impact100, sitemap_profiles…)."""
+    return sorted(_READERS)
+
+
 def register_list_reader(name: str) -> Callable[[ListReaderFn], ListReaderFn]:
     """Register a reader for a list type (decorator), e.g. norrsken_impact100."""
 
@@ -181,7 +187,8 @@ def register_list_reader(name: str) -> Callable[[ListReaderFn], ListReaderFn]:
 
 def _register_builtin_readers() -> None:
     import job_radar.sources.norrsken
-    import job_radar.sources.sitemap_profiles  # noqa: F401
+    import job_radar.sources.sitemap_profiles
+    import job_radar.sources.ycombinator  # noqa: F401
 
 
 def read_list(source: "ListSource", http: HttpClient) -> ListResult:
@@ -322,7 +329,7 @@ class ListReader:
     def read(self, source: ListSource) -> ListResult:
         """Read a list: its companies, their websites and descriptions."""
         result = ListResult()
-        html = self._get(source.url, result)
+        html = fetch_text(self._http, source.url, result)
         if html is None:
             return result
         parsed = parse_list_page(html, source.url)
@@ -344,26 +351,28 @@ class ListReader:
         for entry in parsed.direct:
             add(entry.name, entry.url, entry.context)
         for entry in parsed.details:
-            detail = self._get(entry.url, None)
+            detail = fetch_text(self._http, entry.url)
             website = website_from_detail_page(detail, entry.url) if detail else None
             add(entry.name, website, entry.context)
         return result
 
-    def _get(self, url: str, result: ListResult | None) -> str | None:
-        reason: str | None = None
-        try:
-            response = self._http.get(url)
-        except RobotsDisallowedError:
-            reason = "the site's robots.txt asks tools not to read it"
-        except FetchError as exc:
-            reason = exc.reason
-        else:
-            if response.status_code == 200:
-                return response.text
-            reason = f"HTTP {response.status_code}"
-        if result is not None:
-            result.error = reason
-        return None
+
+def fetch_text(http: HttpClient, url: str, result: ListResult | None = None) -> str | None:
+    """A page's text, or None; why it failed (robots.txt, network, HTTP status) goes in
+    `result.error` when a result is given. Shared by every list reader."""
+    try:
+        response = http.get(url)
+    except RobotsDisallowedError:
+        reason = "the site's robots.txt asks tools not to read it"
+    except FetchError as exc:
+        reason = exc.reason
+    else:
+        if response.status_code == 200:
+            return response.text
+        reason = f"HTTP {response.status_code}"
+    if result is not None:
+        result.error = reason
+    return None
 
 
 @register_list_reader("page")

@@ -39,8 +39,8 @@ def _fit(item: RoleItem) -> str:
 
 
 def render_roles_report(report: RolesReport, profile: Profile) -> str:
-    """The roles report as Markdown: to watch, to review, closed, rejected, couldn't check,
-    waiting for your input.
+    """The roles report as Markdown: to watch, to review, closed, other roles at your companies,
+    rejected, couldn't check, waiting for your input.
     """
 
     def label(family: str) -> str:
@@ -49,6 +49,7 @@ def render_roles_report(report: RolesReport, profile: Profile) -> str:
 
     watch = report.by_outcome(RoleOutcome.WATCH)
     review = report.by_outcome(RoleOutcome.REVIEW)
+    other = report.by_outcome(RoleOutcome.OTHER)
     rejected = report.by_outcome(RoleOutcome.REJECTED)
     since = report.since.strftime("%-d %B") if report.since else None
     new_watch = sum(report.is_new(r) for r in watch)
@@ -58,7 +59,9 @@ def render_roles_report(report: RolesReport, profile: Profile) -> str:
     out.append(
         f"**{len(watch)} to watch** ({new_watch} new) · "
         f"{len(review) + len(report.page_mentions)} to review ({new_review} new) · "
-        f"{len(rejected)} rejected · across {report.watched_companies} watched companies"
+        f"{len(other)} other · {len(rejected)} rejected · "
+        + (f"{len(report.ignored)} ignored · " if report.ignored else "")
+        + f"across {report.watched_companies} watched companies"
     )
     out.append("")
     out.append(
@@ -70,15 +73,23 @@ def render_roles_report(report: RolesReport, profile: Profile) -> str:
         out.append("_First report: every open role counts as new._")
         out.append("")
 
+    limit = profile.criteria.roles.show_per_company
+
     def company_groups(items: list[RoleItem], line: Callable[[RoleItem], str]) -> None:
-        # Companies by their best CV fit (alphabetical without a CV), roles by fit inside.
+        # Companies by their best CV fit (alphabetical without a CV), roles by fit inside;
+        # at most `limit` roles per company, then how many more (all on the dashboard).
         by_company = sorted(items, key=lambda r: r.company_name.lower())
         groups = [sorted(g, key=fit_rank) for _, g in groupby(by_company, lambda r: r.company_name)]
         for members in sorted(groups, key=lambda g: fit_rank(g[0])[0]):
             name = members[0].company_name
             star = f" · ⭐ you know {members[0].referral}" if members[0].referral else ""
             out.append(f"#### {name}{star}")
-            out.extend(line(item) for item in members)
+            shown = members[:limit] if limit else members
+            out.extend(line(item) for item in shown)
+            if len(members) > len(shown):
+                out.append(
+                    f"- … and {len(members) - len(shown)} more at {name} (see the dashboard)"
+                )
             out.append("")
 
     def found(item: RoleItem) -> str:
@@ -100,6 +111,17 @@ def render_roles_report(report: RolesReport, profile: Profile) -> str:
         details = _details(r)
         extra = f" · {details}" if details else ""
         return f"- **[{r.posting.title}]({r.posting.url})** — {r.decision.reason}{extra}{_fit(r)}"
+
+    if report.saved:
+        out.append(f"## Saved roles ({len(report.saved)})")
+        out.append("Roles you saved (★ on the dashboard), each with where it stands now.")
+        for saved in report.saved:
+            r = saved.item
+            out.append(
+                f"- **[{r.posting.title}]({r.posting.url})** — {r.company_name} · "
+                f"{saved.status}{_fit(r)}"
+            )
+        out.append("")
 
     out.append("## To watch")
     out.append("Your role families, accepted contract, within reach (or remote / not stated).")
@@ -132,6 +154,33 @@ def render_roles_report(report: RolesReport, profile: Profile) -> str:
             out.append(f"- {item.company_name} — {item.posting.title} · {found(item)}")
         out.append("")
 
+    if report.suggestions:
+        out.append("## Role families to add or exclude")
+        out.append(
+            "Many open roles at your companies are in these families, which aren't yours. Add "
+            "one with `uv run radar setup` (or `roles.target_families` in your criteria), or "
+            "exclude it with `roles.excluded_families`."
+        )
+        out.append("")
+        for s in report.suggestions:
+            fits = f" · ✓ {s.fits_cv} {'fits' if s.fits_cv == 1 else 'fit'} your CV"
+            out.append(
+                f"- **{s.label}**: {s.roles} open roles (e.g. {', '.join(s.examples)})"
+                + (fits if s.fits_cv else "")
+            )
+        out.append("")
+
+    if other:
+        out.append(f"## Other roles at your companies ({len(other)})")
+        out.append(
+            "Titles outside your role families (matched on title keywords only): worth a glance. "
+            "A good CV fit moves one to review."
+        )
+        out.append("")
+        company_groups(
+            other, lambda r: f"- [{r.posting.title}]({r.posting.url}){_fit(r)} · {found(r)}"
+        )
+
     if rejected:
         out.append(f"## Rejected ({len(rejected)})")
         for item in sorted(rejected, key=lambda r: (r.company_name.lower(), r.posting.title)):
@@ -139,10 +188,23 @@ def render_roles_report(report: RolesReport, profile: Profile) -> str:
             out.append(f"- {item.company_name} — [{p.title}]({p.url}): {item.decision.reason}")
         out.append("")
 
-    if report.unreadable:
-        out.append("## Couldn't check automatically")
-        for manual in sorted(report.unreadable, key=lambda i: i.company_name.lower()):
-            out.append(f"- {manual.company_name} — [link]({manual.url}): {manual.reason}")
+    if report.hand_checks or report.hidden_hand_checks:
+        out.append(f"## Check careers pages by hand ({len(report.hand_checks)})")
+        out.append(
+            "The tool can't read these for you (no careers page, LinkedIn, a site that blocks "
+            "tools…). Best score first."
+        )
+        if report.hidden_hand_checks:
+            out.append(f"{len(report.hidden_hand_checks)} hidden: you checked or ignored them.")
+        for check in report.hand_checks:
+            status = "followed" if check.followed else "worth a look"
+            about = (
+                f"{status}, not scored" if check.overall is None else f"{check.overall:g}, {status}"
+            )
+            does = f"{check.description.rstrip('.')}. " if check.description else ""
+            out.append(
+                f"- {check.company.name} ({about}) — {does}[link]({check.url}): {check.reason}"
+            )
         out.append("")
     if report.pending:
         out.append(f"## Waiting for your input ({len(report.pending)})")

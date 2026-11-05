@@ -7,6 +7,7 @@ and anything that can't be read is listed for you to check by hand. Framework-ag
 everything external (HTTP, storage, clock) is passed in.
 """
 
+import logging
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -93,6 +94,8 @@ class WatchResult:
     run_id: str | None = None
 
 
+log = logging.getLogger(__name__)
+
 WATCH_MAX_AGE = timedelta(days=7)
 
 
@@ -109,31 +112,75 @@ def watch_boards(
     or all with `force`); boards checked recently keep their stored roles and reasons."""
     companies = {c.company.company_id: c for c in repo.companies()}
     collected = WatchResult(run_id=run_id)
-    for board in repo.boards():
-        company = companies.get(board.company_id)
-        if company is None:
-            continue
+    boards = [b for b in repo.boards() if b.company_id in companies]
+    log.info("▸ Job boards: %d watched (each re-checked every %d days)", len(boards), max_age.days)
+    width = len(str(len(boards)))
+    for n, board in enumerate(boards, start=1):
+        company = companies[board.company_id]
+        label = f"[{n:>{width}}/{len(boards)}] {company.company.name}"
         fresh = board.last_checked_at is not None and now - board.last_checked_at < max_age
         if fresh and not force:
             collected.skipped_fresh += 1
             _remember_unreadable(board, company, collected)
+            log.debug("%s: up to date (checked %s)", label, board.last_checked_at)
             continue
+        reads = board.ref.kind is not BoardKind.NONE and not board.ref.kind.manual_only
+        if reads:  # said before the request, so a slow site shows what is being waited on
+            log.info("%s: checking %s…", label, board.careers_url or board.ref.kind)
+        before = (len(collected.errors), len(collected.manual))
         _watch_board(board, company, repo, http, collected, now)
         repo.mark_board_checked(board.company_id, now)
+        _say_board_result(repo, board, label, collected, before, reads=reads)
+    if collected.skipped_fresh:
+        log.info(
+            "  %d up to date (checked within %d days): their roles are kept",
+            collected.skipped_fresh,
+            max_age.days,
+        )
     return collected
+
+
+def _say_board_result(
+    repo: Repository,
+    board: Board,
+    label: str,
+    collected: WatchResult,
+    before: tuple[int, int],
+    *,
+    reads: bool,
+) -> None:
+    """One line on what checking a board gave: open roles, a problem, or "check by hand"
+    (under the "checking…" line if there was one, else on its own with the company name)."""
+    lead = " " * len(label.split("]")[0] + "]") if reads else f"{label}:"
+    if len(collected.errors) > before[0]:
+        log.info("%s couldn't read it: %s", lead, collected.errors[-1])
+    elif len(collected.manual) > before[1]:
+        log.info("%s check by hand — %s", lead, collected.manual[-1].reason)
+    else:
+        count = len(repo.postings(company_id=board.company_id, open_only=True))
+        found = f"{count} open role{'s' if count != 1 else ''}" if count else "no job adverts"
+        log.info("%s %s", lead, found)
+
+
+def unreadable_board(board: Board, website: str) -> tuple[str, str] | None:
+    """(link to open, why) if this board's jobs can't be read automatically: no careers page,
+    a site only you can read (LinkedIn), or a last check that failed. None if it reads fine.
+    Shared by the watch run and the "check by hand" list so they always agree."""
+    kind = board.ref.kind
+    if kind is BoardKind.NONE:
+        return website, "no careers page known"
+    if kind.manual_only:
+        return board.careers_url or "", f"{kind} can't be read automatically"
+    if board.last_error:
+        return board.careers_url or "", board.last_error
+    return None
 
 
 def _remember_unreadable(board: Board, company: StoredCompany, collected: WatchResult) -> None:
     """For a board skipped as up to date, repeat why it couldn't be read last time."""
-    name, kind = company.company.name, board.ref.kind
-    if kind is BoardKind.NONE:
-        collected.manual.append(ManualItem(name, company.company.website, "no careers page known"))
-    elif kind.manual_only:
-        collected.manual.append(
-            ManualItem(name, board.careers_url or "", f"{kind} can't be read automatically")
-        )
-    elif board.last_error:
-        collected.manual.append(ManualItem(name, board.careers_url or "", board.last_error))
+    unreadable = unreadable_board(board, company.company.website)
+    if unreadable is not None:
+        collected.manual.append(ManualItem(company.company.name, *unreadable))
 
 
 def _unreadable(
@@ -158,11 +205,8 @@ def _watch_board(
     now: datetime,
 ) -> None:
     name, url, kind = company.company.name, board.careers_url or "", board.ref.kind
-    if kind is BoardKind.NONE:
-        collected.manual.append(ManualItem(name, company.company.website, "no careers page known"))
-        return
-    if kind.manual_only:
-        collected.manual.append(ManualItem(name, url, f"{kind} can't be read automatically"))
+    if kind is BoardKind.NONE or kind.manual_only:
+        _remember_unreadable(board, company, collected)
         return
 
     collected.checked += 1

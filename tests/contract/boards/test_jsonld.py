@@ -37,23 +37,23 @@ def posting(**fields: Any) -> dict[str, Any]:
 
 
 def test_recruitee_job_page() -> None:
-    url = "https://up42gmbh.recruitee.com/o/product-designer-mfx-6"
-    [job] = extract((PAGES / "recruitee-up42-product-designer.html").read_text(), url)
-    assert job.title == "Product Designer (m/f/x)"
-    assert job.job_id == "jsonld:acme.com:2755901"
+    url = "https://jobs.tonyschocolonely.com/o/people-partner-bean-to-bar"
+    [job] = extract((PAGES / "recruitee-tony-people-partner.html").read_text(), url)
+    assert job.title == "People Partner Bean to Bar"
+    assert job.job_id == "jsonld:acme.com:2751782"
     assert job.source == "jsonld"
     assert job.url == url
-    assert job.location == "Berlin, BE, DE"
+    assert job.location == "Amsterdam, NH, NL"
     assert job.part_time is False
-    assert job.published_at == datetime(2026, 9, 23, tzinfo=UTC)
+    assert job.published_at == datetime(2026, 9, 18, tzinfo=UTC)
     assert job.description and "<" not in job.description[:200]
 
 
 def test_ashby_job_page() -> None:
-    [job] = extract((PAGES / "ashby-trawa-data-engineer.html").read_text())
-    assert job.title == "Senior Data Engineer"
-    assert job.job_id == "jsonld:acme.com:62a94b9d-7b35-44f6-ab42-60a610e0588f"
-    assert job.location == "Berlin, Germany"
+    [job] = extract((PAGES / "ashby-snowflake-data-engineer.html").read_text())
+    assert job.title == "Data Engineer"
+    assert job.job_id == "jsonld:acme.com:1af751fb-d53e-43b0-a3bc-6fcc4004cafb"
+    assert job.location == "Pune, India"
 
 
 # --- shapes and fields --------------------------------------------------------------------

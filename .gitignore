@@ -1,11 +1,6 @@
-# Personal data — never commit
+# Personal data — never commit. config/ is all yours (starters: config_templates/).
+config/
 data/
-config/criteria.yaml
-config/cv.*
-config/companies.csv
-config/companies_pending.csv
-config/sources.yaml
-config/decisions.csv
 .env
 .env.*
 !.env.personal.example
@@ -36,3 +31,7 @@ local/
 
 # Personal working notes, kept locally only
 docs/KICKOFF_PROMPTS.md
+
+# Tests named *_yours.py check samples from companies on your own list: they stay on your
+# machine. Their samples are listed in .git/info/exclude (local, never committed).
+tests/**/*_yours.py

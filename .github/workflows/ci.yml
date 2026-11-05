@@ -17,13 +17,17 @@ concurrency:
 
 jobs:
   checks:
-    name: Lint, types, tests, demo
+    name: Lint, types, tests, demo (Python ${{ matrix.python }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python }}
           enable-cache: true
       - run: ./scripts/ci.sh
 

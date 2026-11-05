@@ -111,7 +111,9 @@ def test_failed_calls_are_recorded_too() -> None:
 
 
 def test_extractor_records_its_calls() -> None:
-    taxonomy = load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs").taxonomy
+    taxonomy = load_profile(
+        REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs"
+    ).taxonomy
     recorder = UsageRecorder()
     extractor = ClaudeCodeExtractor(
         taxonomy, executable="/bin/claude", run=runner(output(FACTS)), recorder=recorder

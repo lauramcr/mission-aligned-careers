@@ -1,6 +1,8 @@
 # docker compose up  ->  runs the offline demo, then the Dagster UI (:3000) and the API (:8000).
 #
-# Default: the fictional demo world (demo/ in, demo-run/ out, pages and model answers replayed).
+# Default: the fictional demo world: `radar demo` copies demo_config/ into demo-run/config/ and
+# runs on the copy (data in demo-run/data/, pages and model answers replayed); the dashboard
+# and Dagster then work on that copy, so your clicks never change demo_config/.
 # Your own data: cp .env.personal.example .env  (config/ and data/, live web, free keyword facts;
 # Claude Code is not available inside the container — run `radar` on your Mac for that).
 
@@ -10,17 +12,19 @@ x-radar: &radar
   build: .
   image: mission-aligned-careers:local
   environment:
-    JOB_RADAR_CRITERIA: ${JOB_RADAR_CRITERIA:-demo/criteria.yaml}
-    JOB_RADAR_COMPANIES: ${JOB_RADAR_COMPANIES:-demo/companies.csv}
-    JOB_RADAR_PENDING: ${JOB_RADAR_PENDING:-demo-run/companies_pending.csv}
-    JOB_RADAR_SOURCES: ${JOB_RADAR_SOURCES:-demo/sources.yaml}
-    JOB_RADAR_DECISIONS: ${JOB_RADAR_DECISIONS:-demo-run/decisions.csv}
-    JOB_RADAR_DB: ${JOB_RADAR_DB:-demo-run/radar.duckdb}
-    JOB_RADAR_REPORTS: ${JOB_RADAR_REPORTS:-demo-run/reports}
-    JOB_RADAR_SCORES_CSV: ${JOB_RADAR_SCORES_CSV:-demo-run/scores.csv}
-    JOB_RADAR_CACHE: ${JOB_RADAR_CACHE:-demo-run/cache}
-    JOB_RADAR_CV: ${JOB_RADAR_CV:-demo/cv.md}
-    JOB_RADAR_REPLAY_DIR: ${JOB_RADAR_REPLAY_DIR-demo}   # empty in .env = live web
+    JOB_RADAR_CRITERIA: ${JOB_RADAR_CRITERIA:-demo-run/config/criteria.yaml}
+    JOB_RADAR_COMPANIES: ${JOB_RADAR_COMPANIES:-demo-run/config/companies.csv}
+    JOB_RADAR_PENDING: ${JOB_RADAR_PENDING:-demo-run/config/companies_pending.csv}
+    JOB_RADAR_SOURCES: ${JOB_RADAR_SOURCES:-demo-run/config/sources.yaml}
+    JOB_RADAR_DECISIONS: ${JOB_RADAR_DECISIONS:-demo-run/config/decisions.csv}
+    JOB_RADAR_ROLES_MARKS: ${JOB_RADAR_ROLES_MARKS:-demo-run/config/roles.csv}
+    JOB_RADAR_CAREERS_CHECKS: ${JOB_RADAR_CAREERS_CHECKS:-demo-run/config/careers_checks.csv}
+    JOB_RADAR_DB: ${JOB_RADAR_DB:-demo-run/data/radar.duckdb}
+    JOB_RADAR_REPORTS: ${JOB_RADAR_REPORTS:-demo-run/data/reports}
+    JOB_RADAR_SCORES_CSV: ${JOB_RADAR_SCORES_CSV:-demo-run/data/scores.csv}
+    JOB_RADAR_CACHE: ${JOB_RADAR_CACHE:-demo-run/data/cache}
+    JOB_RADAR_CV: ${JOB_RADAR_CV:-demo-run/config/cv}
+    JOB_RADAR_REPLAY_DIR: ${JOB_RADAR_REPLAY_DIR-demo_config}   # empty in .env = live web
     JOB_RADAR_DAGSTER_HOST: dagster
     DAGSTER_HOME: /app/dagster-home
   volumes:
@@ -31,7 +35,7 @@ x-radar: &radar
 services:
   demo:
     <<: *radar
-    command: ["demo", "--workspace", "demo-run"]
+    command: ["demo", "--workspace", "demo-run", "--no-serve"]
 
   dagster:
     <<: *radar

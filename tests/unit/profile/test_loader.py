@@ -134,10 +134,17 @@ def test_valid_minimal_profile_loads(tmp_path: Path) -> None:
     assert profile.tier_of("unknown_theme") is None
 
 
-def test_shipped_example_and_climate_pack_load() -> None:
-    profile = load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs")
+@pytest.mark.parametrize("shipped", ["config_templates", "demo_config"])
+def test_shipped_criteria_load_with_the_climate_pack(shipped: str) -> None:
+    profile = load_profile(REPO / shipped / "criteria.yaml", REPO / "packs")
     assert profile.taxonomy.pack == "climate"
-    assert "data_engineering" in profile.criteria.roles.target_families
+    assert profile.criteria.roles.target_families
+    assert profile.criteria.thresholds.check_by_hand.min_overall == 4.0
+
+
+def test_check_by_hand_threshold_is_optional(tmp_path: Path) -> None:
+    profile = load_profile(*write_files(tmp_path))
+    assert profile.criteria.thresholds.check_by_hand.min_overall == 4.0
 
 
 # --- file-level problems ---------------------------------------------------------
@@ -336,6 +343,41 @@ def test_fact_keywords_must_use_pack_ids(tmp_path: Path, section: str, bad: str)
 
 
 def test_shipped_climate_pack_has_keywords_for_every_theme() -> None:
-    profile = load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs")
+    profile = load_profile(REPO / "config_templates" / "criteria.yaml", REPO / "packs")
     missing = [t for t, d in profile.taxonomy.themes.items() if not d.keywords]
     assert missing == []
+
+
+def test_excluded_families_must_be_in_the_pack_and_not_targeted(tmp_path: Path) -> None:
+    target = CRITERIA["roles"]["target_families"][0]
+
+    def exclude(families: list[str]) -> Mutator:
+        return lambda c: c["roles"].update(excluded_families=families)
+
+    errors = load_errors(tmp_path / "a", exclude(["basket_weaving"]))
+    assert has_error(errors, "roles.excluded_families", "unknown role family 'basket_weaving'")
+    errors = load_errors(tmp_path / "b", exclude([target]))
+    assert has_error(errors, "roles.excluded_families", f"'{target}'", "also a target family")
+
+
+def test_the_pack_names_places() -> None:
+    taxonomy = load_profile(REPO / "config_templates" / "criteria.yaml", REPO / "packs").taxonomy
+    paris = taxonomy.places["paris"]
+    assert (paris.label, paris.kind, paris.country) == ("Paris", "city", "france")
+    assert taxonomy.places["ile_de_france"].country == "france"
+    assert taxonomy.places["france"].kind == "country"
+
+
+def test_a_place_must_be_in_a_known_country(tmp_path: Path) -> None:
+    def add(pack: dict[str, Any]) -> None:
+        pack["places"] = {
+            "atlantis_city": {
+                "label": "Atlantis",
+                "kind": "city",
+                "keywords": ["atlantis"],
+                "in": "atlantis",
+            }
+        }
+
+    errors = load_errors(tmp_path, pack_edit=add)
+    assert has_error(errors, "places.atlantis_city", "unknown country 'atlantis'")

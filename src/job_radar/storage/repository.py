@@ -30,7 +30,8 @@ class StoredCompany:
     careers_url: str | None
     notes: str | None
     referral: str | None
-    known: bool  # listed by you (source 'user_csv'): always watched
+    known: bool  # listed by you (source 'user_csv')
+    always_follow: bool = True  # your list's tick: followed whatever its score
 
 
 @dataclass(frozen=True)

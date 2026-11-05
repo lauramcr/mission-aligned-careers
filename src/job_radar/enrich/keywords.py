@@ -5,17 +5,22 @@ keywords: themes, sectors and `fact_keywords`. List descriptions count double, e
 "Sectors:" tag segment (generic labels). Sector mentions are recorded as client sectors only:
 rough facts never trigger an exclusion gate. Confidence is fixed low, so these companies go to
 review and are never followed automatically; LLM facts replace them when available.
+
+Offices come from the pack's places (whole words, EN/FR): any place a list description names,
+and website places that follow an address cue ("based in", "offices in", a postcode…) or are
+named at least twice. The extractor sees the pack, never your criteria.
 """
 
 import re
 from collections import Counter
+from functools import cache
 
 from job_radar.domain.facts import CompanyFacts, DataCentrality
 from job_radar.matching.prefilter import count_mentions, normalize
 from job_radar.profile.models import Taxonomy
 
 KEYWORD_CONFIDENCE = 0.4
-VERSION = "keywords_v2"
+VERSION = "keywords_v3"  # v3: office locations from the pack's places
 _WEBSITE_MARKER = "Website text:"
 _SEGMENT = re.compile(r"\s+·\s+|\n")
 # Weighted evidence needed: a list-description mention counts 2, a website mention 1, so one
@@ -23,6 +28,29 @@ _SEGMENT = re.compile(r"\s+·\s+|\n")
 THEME_MIN = 2
 SECONDARY_MIN = 2
 DATA_MIN = 2
+# Words that announce where a company is (normalized: lower case, no accents or punctuation).
+_ADDRESS_CUES = (
+    "based in",
+    "offices in",
+    "office in",
+    "headquartered in",
+    "headquarters",
+    "hq",
+    "located in",
+    "address",
+    "siege",
+    "siege social",
+    "bureaux",
+    "adresse",
+    "basee a",
+    "base a",
+    "implantee a",
+    "situee a",
+)
+_POSTCODE = re.compile(r"(?<![a-z0-9])\d{4,5}(?![a-z0-9])")
+_CUE_WINDOW = 60  # characters after a cue in which a place counts
+MAX_OFFICES = 4
+_KIND_ORDER = {"city": 0, "region": 1, "country": 2}
 
 
 class KeywordExtractor:
@@ -37,8 +65,10 @@ class KeywordExtractor:
 
     @property
     def version(self) -> str:
-        """keywords_vN: bumped when the matching rules change, so facts are recomputed."""
-        return VERSION
+        """keywords_vN: bumped when the matching rules change, so facts are recomputed; your own
+        vocabulary (if any) adds its fingerprint, so adding a theme re-reads the facts."""
+        mine = self._taxonomy.vocabulary_hash
+        return f"{VERSION}+{mine}" if mine else VERSION
 
     def extract(self, *, name: str, website: str, text: str) -> CompanyFacts:
         """Themes ranked by keyword hits (list descriptions count double), plus business model,
@@ -83,10 +113,36 @@ class KeywordExtractor:
                 self._best(keywords.data_centrality, weighted, minimum=DATA_MIN) or "unknown"
             ),
             major_client_sectors=clients,
+            office_locations=self._offices(described, site),
             confidence=KEYWORD_CONFIDENCE,
             evidence=evidence,
             extracted_by="keywords",
         )
+
+    def _offices(self, described: str, site: str) -> list[str]:
+        """Where the company is: pack places named in its list descriptions, or on its website
+        after an address cue or twice. Cities first; a country a listed city is in is dropped."""
+        places = self._taxonomy.places
+        first_seen: dict[str, int] = {}
+        listed = normalize(described)
+        for key, place in places.items():
+            hits = _positions(listed, place.keywords)
+            if hits:
+                first_seen[key] = hits[0] - len(listed) - 1  # descriptions come first
+        text = normalize(site)
+        cues = [m.end() for cue in _ADDRESS_CUES for m in _phrase(cue).finditer(text)]
+        cues += [m.end() for m in _POSTCODE.finditer(text)]
+        for key, place in places.items():
+            if key in first_seen:
+                continue
+            hits = _positions(text, place.keywords)
+            near_cue = any(0 <= hit - cue <= _CUE_WINDOW for hit in hits for cue in cues)
+            if len(hits) >= 2 or near_cue:
+                first_seen[key] = hits[0]
+        implied = {places[k].country for k in first_seen if places[k].kind != "country"}
+        kept = [k for k in first_seen if not (places[k].kind == "country" and k in implied)]
+        kept.sort(key=lambda k: (_KIND_ORDER[places[k].kind], first_seen[k]))
+        return [places[k].label for k in kept[:MAX_OFFICES]]
 
     @staticmethod
     def _weighted_texts(described: str, site: str) -> list[tuple[str, int]]:
@@ -121,3 +177,16 @@ class KeywordExtractor:
         first = described.split(":", 1)[-1] if described.strip() else site
         first = _SEGMENT.split(first.strip())[0] if first.strip() else ""
         return first.strip()[:200] or "(no description)"
+
+
+@cache
+def _phrase(phrase: str) -> re.Pattern[str]:
+    """A whole-word pattern for a normalized phrase ("uk" never matches "ukulele")."""
+    return re.compile(rf"(?<![a-z0-9]){re.escape(normalize(phrase))}(?![a-z0-9])")
+
+
+def _positions(text: str, names: list[str]) -> list[int]:
+    """Where any of these names occurs in normalized text, in order."""
+    return sorted(
+        m.start() for name in names if normalize(name) for m in _phrase(name).finditer(text)
+    )

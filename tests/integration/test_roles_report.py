@@ -1,4 +1,4 @@
-"""Roles report: watch boards, then sort every open role into watch / review / rejected."""
+"""Roles report: watch boards, then sort every open role into watch / review / other / rejected."""
 
 from datetime import UTC, datetime
 from pathlib import Path
@@ -13,18 +13,20 @@ from job_radar.web.http import FakeHttpClient, Response
 REPO = Path(__file__).resolve().parents[2]
 FIXTURES = REPO / "tests" / "fixtures"
 T0 = datetime(2026, 10, 13, 8, 0, tzinfo=UTC)
-ASHBY = "https://api.ashbyhq.com/posting-api/job-board/trawa?includeCompensation=true"
+ASHBY = "https://api.ashbyhq.com/posting-api/job-board/snowflake?includeCompensation=true"
 PAGE = "https://www.acme.fr/carrieres"
 
 
 def test_roles_report(tmp_path: Path) -> None:
-    profile = load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs")
+    profile = load_profile(
+        REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs"
+    )
     companies = tmp_path / "companies.csv"
     companies.write_text(
         "name,website,careers_url,notes,referral\n"
-        "trawa,https://www.trawa.de,https://jobs.ashbyhq.com/trawa,,Alice\n"
+        "Snowflake,https://www.snowflake.com,https://jobs.ashbyhq.com/snowflake,,Alice\n"
         f"Acme,https://www.acme.fr,{PAGE},,\n"
-        "AIRMO,https://www.airmo.io,https://www.linkedin.com/company/airmo/,,\n"
+        "Siemens,https://www.siemens.com,https://www.linkedin.com/company/siemens/,,\n"
     )
     repo = DuckDBRepository(":memory:")
     run_import(repo, companies_csv=companies, pending_csv=tmp_path / "p.csv", now=T0)
@@ -34,38 +36,44 @@ def test_roles_report(tmp_path: Path) -> None:
     acme += "<h3>Chef·fe de projet data (Paris)</h3><h3>Office manager</h3></body></html>"
     http = FakeHttpClient(
         {
-            ASHBY: Response(ASHBY, 200, (FIXTURES / "boards/ashby/trawa.json").read_text()),
+            ASHBY: Response(ASHBY, 200, (FIXTURES / "boards/ashby/snowflake.json").read_text()),
             PAGE: Response(PAGE, 200, acme),
         }
     )
-    watched = watch_boards(repo, http, now=T0)
-    report = build_roles_report(repo, profile, now=T0, unreadable=watched.manual)
+    watch_boards(repo, http, now=T0)
+    report = build_roles_report(repo, profile, now=T0)
     text = render_roles_report(report, profile)
 
     assert report.watched_companies == 3
-    assert "No matching open roles right now." in text  # trawa's data roles are in Berlin
-    assert "#### trawa · ⭐ you know Alice" in text
-    assert "[Senior Data Engineer]" in text and "Data engineering, but located in Berlin HQ" in text
-    assert "internship in Data analysis / BI: open-application signal" in text
+    assert "**[Project Manager (French)]" in text  # to watch: remote in France
+    assert "#### Snowflake · ⭐ you know Alice" in text
+    assert "[Data Engineer]" in text and "Data engineering, but located in IN-Pune" in text
+    assert "excluded contract: internship" in text
     assert "- Acme: “Chef·fe de projet data (Paris)” (Project management)" in text
-    assert "## Rejected (" in text and "Head of Revenue Operations" in text
-    assert "not one of your role families" in text
-    assert "AIRMO — [link](https://www.linkedin.com/company/airmo/)" in text
+    other = text.split("## Other roles at your companies (")[1].split("\n## ")[0]
+    assert "Software Engineer - Java Platform" in other  # outside your families: not rejected
+    assert "## Rejected (" in text  # excluded contracts only
+    assert (
+        "- Siemens (followed, not scored) — [link](https://www.linkedin.com/company/siemens/): "
+        "linkedin can't be read automatically" in text
+    )
 
 
 def test_new_still_open_and_closed_between_reports(tmp_path: Path) -> None:
     import json
     from datetime import timedelta
 
-    profile = load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs")
+    profile = load_profile(
+        REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs"
+    )
     companies = tmp_path / "companies.csv"
     companies.write_text(
         "name,website,careers_url,notes,referral\n"
-        "trawa,https://www.trawa.de,https://jobs.ashbyhq.com/trawa,,\n"
+        "Snowflake,https://www.snowflake.com,https://jobs.ashbyhq.com/snowflake,,\n"
     )
     repo = DuckDBRepository(":memory:")
     run_import(repo, companies_csv=companies, pending_csv=tmp_path / "p.csv", now=T0)
-    board = json.loads((FIXTURES / "boards/ashby/trawa.json").read_text())
+    board = json.loads((FIXTURES / "boards/ashby/snowflake.json").read_text())
 
     def job(native: str, title: str, location: str) -> dict[str, object]:
         template = dict(board["jobs"][0])
@@ -75,7 +83,7 @@ def test_new_still_open_and_closed_between_reports(tmp_path: Path) -> None:
             location=location,
             employmentType="FullTime",
             secondaryLocations=[],
-            jobUrl=f"https://jobs.ashbyhq.com/trawa/{native}",
+            jobUrl=f"https://jobs.ashbyhq.com/snowflake/{native}",
         )
         return template
 
@@ -90,7 +98,6 @@ def test_new_still_open_and_closed_between_reports(tmp_path: Path) -> None:
             profile,
             now=now,
             since=since,
-            unreadable=watched.manual,
             checked=watched.checked,
             up_to_date=watched.skipped_fresh,
         )
@@ -117,16 +124,18 @@ def test_new_still_open_and_closed_between_reports(tmp_path: Path) -> None:
 
 
 def test_cv_fit_ranks_and_explains_roles(tmp_path: Path) -> None:
-    profile = load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs")
+    profile = load_profile(
+        REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs"
+    )
     companies = tmp_path / "companies.csv"
     companies.write_text(
         "name,website,careers_url,notes,referral\n"
-        "trawa,https://www.trawa.de,https://jobs.ashbyhq.com/trawa,,\n"
+        "Snowflake,https://www.snowflake.com,https://jobs.ashbyhq.com/snowflake,,\n"
     )
     repo = DuckDBRepository(":memory:")
     run_import(repo, companies_csv=companies, pending_csv=tmp_path / "p.csv", now=T0)
     http = FakeHttpClient(
-        {ASHBY: Response(ASHBY, 200, (FIXTURES / "boards/ashby/trawa.json").read_text())}
+        {ASHBY: Response(ASHBY, 200, (FIXTURES / "boards/ashby/snowflake.json").read_text())}
     )
     watch_boards(repo, http, now=T0)
     cv = "Data analyst. SQL, Python, dbt, Power BI, statistics, forecasting."
@@ -139,7 +148,7 @@ def test_cv_fit_ranks_and_explains_roles(tmp_path: Path) -> None:
     fits = [r.cv_fit for r in report.roles if r.cv_fit is not None]
     assert len(fits) == len(report.roles)
     scored = [f.score for f in fits if f.score is not None]
-    assert scored, "the trawa descriptions name some skills"
+    assert scored, "the Snowflake descriptions name some skills"
     for outcome in {r.decision.outcome for r in report.roles}:
         ranked = report.ranked(outcome)
         values = [r.cv_fit.score if r.cv_fit and r.cv_fit.score is not None else -1 for r in ranked]

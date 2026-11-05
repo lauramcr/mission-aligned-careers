@@ -1,5 +1,6 @@
 """Load a domain pack and the user's criteria, collecting every problem at once."""
 
+import hashlib
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -7,7 +8,19 @@ from typing import Any, NamedTuple
 import yaml
 from pydantic import BaseModel, ValidationError
 
-from job_radar.profile.models import Career, Criteria, Impact, Practical, Profile, Roles, Taxonomy
+from job_radar.profile.models import (
+    Career,
+    Criteria,
+    Impact,
+    Practical,
+    Profile,
+    RoleFamilyDef,
+    Roles,
+    SectorDef,
+    Taxonomy,
+    ThemeDef,
+    Vocabulary,
+)
 
 
 class ProfileError(Exception):
@@ -41,6 +54,10 @@ def load_profile(criteria_path: Path, packs_dir: Path) -> Profile:
     else:
         taxonomy = _load_taxonomy(pack_path(packs_dir, pack), pack, errors)
 
+    vocabulary = criteria_path.parent / VOCABULARY_FILE
+    if taxonomy is not None and vocabulary.is_file():
+        taxonomy = _with_vocabulary(taxonomy, vocabulary, errors)
+
     criteria = _validate(Criteria, raw_criteria, errors)
 
     if taxonomy is not None:
@@ -64,6 +81,52 @@ def _read_yaml(path: Path, errors: list[str]) -> dict[str, Any] | None:
         errors.append(f"{path}: expected a mapping at the top level")
         return None
     return data
+
+
+VOCABULARY_FILE = "my_vocabulary.yaml"  # your own terms, next to criteria.yaml
+
+
+def _with_vocabulary(taxonomy: Taxonomy, path: Path, errors: list[str]) -> Taxonomy | None:
+    """The pack plus your own themes, sectors and role families (a key already in the pack is
+    an error: change its words in the pack's place, or pick another name)."""
+    found: list[str] = []
+    raw = _read_yaml(path, found)
+    vocabulary = _validate(Vocabulary, raw or {}, found) if not found else None
+    if vocabulary is not None:
+        for section, mine, pack in (
+            ("themes", vocabulary.themes, taxonomy.themes),
+            ("sectors", vocabulary.sectors, taxonomy.sectors),
+            ("role_families", vocabulary.role_families, taxonomy.role_families),
+        ):
+            found += [f"{section}.{key}: already in the pack" for key in mine if key in pack]
+    errors.extend(f"{VOCABULARY_FILE}: {e}" for e in found)
+    if vocabulary is None or found:
+        return None
+
+    def about(label: str, words: list[str]) -> str:
+        return f"{label} (about: {', '.join(words)})"
+
+    themes = {
+        k: ThemeDef(label=t.label, description=about(t.label, t.keywords), keywords=t.keywords)
+        for k, t in vocabulary.themes.items()
+    }
+    sectors = {
+        k: SectorDef(label=s.label, description=about(s.label, s.keywords), keywords=s.keywords)
+        for k, s in vocabulary.sectors.items()
+    }
+    families = {
+        k: RoleFamilyDef(label=r.label, title_keywords=r.title_keywords)
+        for k, r in vocabulary.role_families.items()
+    }
+    digest = hashlib.sha256(vocabulary.model_dump_json().encode()).hexdigest()[:8]
+    return taxonomy.model_copy(
+        update={
+            "themes": {**taxonomy.themes, **themes},
+            "sectors": {**taxonomy.sectors, **sectors},
+            "role_families": {**taxonomy.role_families, **families},
+            "vocabulary_hash": digest,
+        }
+    )
 
 
 def _load_taxonomy(path: Path, pack: str, errors: list[str]) -> Taxonomy | None:
@@ -163,6 +226,11 @@ def _cross_reference(sections: _Sections, taxonomy: Taxonomy) -> list[str]:
 
     if roles is not None:
         check("roles.target_families", roles.target_families, families, "role family")
+        check("roles.excluded_families", roles.excluded_families, families, "role family")
+        for family in set(roles.excluded_families) & set(roles.target_families):
+            errors.append(
+                f"roles.excluded_families: '{family}' is also a target family; keep it in one"
+            )
         if roles.cold_application_signal is not None:
             check(
                 "roles.cold_application_signal.families",

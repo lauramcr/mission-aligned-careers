@@ -147,12 +147,17 @@ class DuckDBRepository:
                 c = e.company
                 # Only the user's own list may rename a company or change its website;
                 # other sources just record that they saw it.
+                # A country or city is only filled in when missing: a list never overwrites one,
+                # and your list (no such columns) never erases one.
+                place = (
+                    "country = coalesce(companies.country, excluded.country), "
+                    "city = coalesce(companies.city, excluded.city), "
+                )
                 on_conflict = (
-                    "name = excluded.name, website = excluded.website, "
-                    "country = excluded.country, city = excluded.city, "
+                    f"name = excluded.name, website = excluded.website, {place}"
                     "last_seen_at = excluded.last_seen_at"
                     if e.source == USER_CSV_SOURCE
-                    else "last_seen_at = excluded.last_seen_at"
+                    else f"{place}last_seen_at = excluded.last_seen_at"
                 )
                 con.execute(
                     "INSERT INTO companies VALUES (?, ?, ?, ?, ?, ?, ?) "
@@ -169,10 +174,11 @@ class DuckDBRepository:
                 )
                 con.execute(
                     """
-                    INSERT INTO company_sources VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO company_sources VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT (company_id, source_name) DO UPDATE SET
                         source_url = excluded.source_url, notes = excluded.notes,
-                        referral = excluded.referral, last_seen_at = excluded.last_seen_at
+                        referral = excluded.referral, last_seen_at = excluded.last_seen_at,
+                        always_follow = excluded.always_follow
                     """,
                     [
                         c.company_id,
@@ -182,6 +188,7 @@ class DuckDBRepository:
                         e.referral,
                         _to_db(seen_at),
                         _to_db(seen_at),
+                        e.always_follow,
                     ],
                 )
 
@@ -191,7 +198,7 @@ class DuckDBRepository:
                 """
                 SELECT c.company_id, c.name, c.website, c.country, c.city,
                        c.first_seen_at, c.last_seen_at, b.careers_url, s.notes, s.referral,
-                       s.company_id IS NOT NULL AS known
+                       s.company_id IS NOT NULL AS known, coalesce(s.always_follow, TRUE)
                 FROM companies c
                 LEFT JOIN career_boards b USING (company_id)
                 LEFT JOIN company_sources s
@@ -215,6 +222,7 @@ class DuckDBRepository:
                 notes=r[8],
                 referral=r[9],
                 known=bool(r[10]),
+                always_follow=bool(r[11]),
             )
             for r in rows
         ]

@@ -8,7 +8,7 @@ from job_radar.cli import app
 from job_radar.web.http import Response
 
 REPO = Path(__file__).resolve().parents[2]
-EXAMPLE = REPO / "config" / "criteria.example.yaml"
+EXAMPLE = REPO / "tests" / "fixtures" / "profile" / "criteria.yaml"
 PACKS = REPO / "packs"
 
 runner = CliRunner()
@@ -42,7 +42,7 @@ def test_profile_check_invalid_lists_problems_and_exits_1(tmp_path: Path) -> Non
     assert "impact.tiers.A.themes" in result.output
 
 
-def test_profile_check_missing_file_suggests_copying_example(tmp_path: Path) -> None:
+def test_profile_check_missing_file_suggests_radar_setup(tmp_path: Path) -> None:
     result = runner.invoke(
         app,
         [
@@ -55,7 +55,7 @@ def test_profile_check_missing_file_suggests_copying_example(tmp_path: Path) -> 
         ],
     )
     assert result.exit_code == 1
-    assert "criteria.example.yaml" in result.output
+    assert "radar setup" in result.output
 
 
 def test_companies_import_pending_and_db_query(tmp_path: Path) -> None:
@@ -98,50 +98,6 @@ def test_companies_import_without_csv_explains_format(tmp_path: Path) -> None:
     assert "name,website,careers_url,notes,referral" in result.output
 
 
-def test_discover_without_lists_or_claude(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    companies = tmp_path / "companies.csv"
-    companies.write_text("name,website,careers_url,notes,referral\nAcme,https://acme.com,,,\n")
-
-    class OfflineClient:
-        def __init__(self, **_: object) -> None: ...
-        def __enter__(self) -> "OfflineClient":
-            return self
-
-        def __exit__(self, *_: object) -> None: ...
-        def get(self, url: str) -> Response:
-            return Response(url=url, status_code=200, text="<html><body>Acme</body></html>")
-
-    monkeypatch.setattr("job_radar.cli.HttpxClient", OfflineClient)
-    monkeypatch.setattr("job_radar.cli.DEFAULT_CACHE", tmp_path / "cache")
-    result = runner.invoke(
-        app,
-        [
-            "discover",
-            "--no-llm",
-            "--criteria",
-            str(EXAMPLE),
-            "--packs-dir",
-            str(PACKS),
-            "--companies",
-            str(companies),
-            "--pending",
-            str(tmp_path / "pending.csv"),
-            "--db",
-            str(tmp_path / "radar.duckdb"),
-            "--sources",
-            str(tmp_path / "none.yaml"),
-            "--decisions",
-            str(tmp_path / "none.csv"),
-            "--reports",
-            str(tmp_path / "reports"),
-        ],
-    )
-    assert result.exit_code == 0, result.output
-    assert "No lists in" in result.output
-    assert "Report written to" in result.output
-    assert list((tmp_path / "reports").glob("discover-*.md"))
-
-
 class _OfflineSite:
     """Stands in for HttpxClient: every page is a tiny site titled after its host."""
 
@@ -156,7 +112,7 @@ class _OfflineSite:
         from urllib.parse import urlsplit
 
         host = urlsplit(url).hostname or ""
-        if host.startswith("oris."):
+        if host.startswith("nike."):
             return Response(url, 404, "")
         title = host.removeprefix("www.").split(".")[0].title()
         return Response(url, 200, f"<html><head><title>{title} | Home</title></head></html>")
@@ -176,7 +132,6 @@ def _add_args(tmp_path: Path) -> list[str]:
         str(tmp_path / "radar.duckdb"),
         "--reports",
         str(tmp_path / "reports"),
-        "--no-llm",
     ]
 
 
@@ -185,21 +140,22 @@ def test_add_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("job_radar.cli.HttpxClient", _OfflineSite)
     monkeypatch.setattr("job_radar.cli.DEFAULT_CACHE", tmp_path / "cache")
 
-    result = runner.invoke(app, ["add", "https://www.heatco.fr", "Oris", *_add_args(tmp_path)])
+    result = runner.invoke(app, ["add", "https://www.heatco.fr", "Nike", *_add_args(tmp_path)])
     assert result.exit_code == 0, result.output
     assert "Heatco" in result.output and "rough keyword facts" in result.output
-    assert "Oris → pending: no website found" in result.output
+    assert "Nike → pending: no website found" in result.output
     assert list((tmp_path / "reports").glob("added-*.md"))
 
     result = runner.invoke(
-        app, ["add", "https://aerleum.com", "--watch", "--note", "CO2 fuels", *_add_args(tmp_path)]
+        app,
+        ["add", "https://patagonia.com", "--watch", "--note", "CO2 fuels", *_add_args(tmp_path)],
     )
     assert result.exit_code == 0, result.output
-    assert "Aerleum,https://aerleum.com,,CO2 fuels," in (tmp_path / "companies.csv").read_text()
+    assert "Patagonia,https://patagonia.com,,CO2 fuels," in (tmp_path / "companies.csv").read_text()
 
 
 def test_add_note_requires_watch(tmp_path: Path) -> None:
-    result = runner.invoke(app, ["add", "Aerleum", "--note", "x", *_add_args(tmp_path)])
+    result = runner.invoke(app, ["add", "Patagonia", "--note", "x", *_add_args(tmp_path)])
     assert result.exit_code == 1
     assert "--note and --referral need --watch" in result.output
 
@@ -209,13 +165,185 @@ def test_add_from_text_and_csv_files(tmp_path: Path, monkeypatch: pytest.MonkeyP
     monkeypatch.setattr("job_radar.cli.HttpxClient", _OfflineSite)
     monkeypatch.setattr("job_radar.cli.DEFAULT_CACHE", tmp_path / "cache")
     export = tmp_path / "Company Follows.csv"
-    export.write_text("Organization,Followed On\nKanop,Mon Mar 03 2025\n")
+    export.write_text("Organization,Followed On\nGoogle,Mon Mar 03 2025\n")
     result = runner.invoke(app, ["add", "--file", str(export), *_add_args(tmp_path)])
     assert result.exit_code == 0, result.output
-    assert "Kanop → pending" in result.output  # no Claude: names go to pending
+    assert "Google → pending" in result.output  # no Claude: names go to pending
 
     result = runner.invoke(
-        app, ["add", "--text", "Met people from wastetide.ai and Seaturns", *_add_args(tmp_path)]
+        app, ["add", "--text", "Met people from ikea.com and Danone", *_add_args(tmp_path)]
     )
     assert result.exit_code == 0, result.output
-    assert "Wastetide" in result.output
+    assert "Ikea" in result.output
+
+
+def test_use_llm_without_claude_code_stops(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from job_radar.enrich import select
+    from job_radar.enrich.extractor import ExtractorUnavailableError
+
+    def not_found() -> str:
+        raise ExtractorUnavailableError("the `claude` command (Claude Code) was not found")
+
+    monkeypatch.setattr(select, "find_claude", not_found)
+    command = ["add", "https://www.heatco.fr", "--use-llm", *_add_args(tmp_path)[:4]]
+    result = runner.invoke(app, command)
+    assert result.exit_code == 1, result.output
+    assert "Claude Code not available" in result.output and "without --use-llm" in result.output
+
+
+def test_radar_alone_shows_the_checklist(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)  # a fresh folder: nothing set up
+    result = runner.invoke(app, [])
+    assert result.exit_code == 0, result.output
+    assert "Looking in config/ for your setup files" in result.output
+    assert "✗ criteria" in result.output
+    assert "Your preferences" in result.output  # each line says what the file is for
+    assert "Next: uv run radar setup   (opens a page in your browser" in result.output
+
+
+def test_start_without_a_profile_says_to_run_setup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["start"])
+    assert result.exit_code == 1
+    assert "uv run radar setup" in result.output
+
+
+def test_start_runs_everything_then_serves_the_dashboard(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import shutil
+
+    shutil.copytree(PACKS, tmp_path / "packs")
+    (tmp_path / "config").mkdir()
+    shutil.copy(EXAMPLE, tmp_path / "config" / "criteria.yaml")
+    (tmp_path / "config" / "companies.csv").write_text(
+        "name,website,careers_url,notes,referral\nHeatco,https://www.heatco.fr,,,\n"
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("job_radar.cli.HttpxClient", _OfflineSite)
+    served: list[tuple[int, bool, Path]] = []
+    monkeypatch.setattr(
+        "job_radar.cli._serve",
+        lambda port, browser, settings, tour=False, **_: served.append(
+            (port, browser, settings.db)
+        ),
+    )
+
+    result = runner.invoke(app, ["start", "--no-browser"])
+
+    assert result.exit_code == 0, result.output
+    assert result.output.startswith("Model: off")  # says it before anything runs
+    assert "1 companies scored" in result.output
+    for step in ("▸ Lists", "▸ Companies", "▸ Job boards", "▸ Reports"):  # progress on screen
+        assert step in result.output
+    assert list((tmp_path / "data" / "digests").glob("roles-*.md"))
+    assert (tmp_path / "data" / "scores.csv").is_file()
+    assert served == [(8000, False, Path("data/radar.duckdb"))]  # this run's own database
+    # The log file (JOB_RADAR_LOG_FILE, set for tests) says what ran, in which mode, and when.
+    log = (tmp_path / "radar.log").read_text(encoding="utf-8")
+    assert "radar start started" in log and "Model: off" in log and "radar start finished" in log
+    assert "radar start started" not in result.output  # file only: the screen stays readable
+
+
+def test_start_cleans_the_cache_after_the_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import os
+    import shutil
+    import time
+
+    from job_radar import cli
+
+    shutil.copytree(PACKS, tmp_path / "packs")
+    (tmp_path / "config").mkdir()
+    shutil.copy(EXAMPLE, tmp_path / "config" / "criteria.yaml")
+    (tmp_path / "config" / "companies.csv").write_text(
+        "name,website,careers_url,notes,referral\nHeatco,https://www.heatco.fr,,,\n"
+    )
+    old = tmp_path / "data" / "cache" / "old.json"
+    old.parent.mkdir(parents=True)
+    old.write_text("{}")
+    long_ago = time.time() - 60 * 86400
+    os.utime(old, (long_ago, long_ago))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("job_radar.cli.HttpxClient", _OfflineSite)
+    monkeypatch.setattr(
+        "job_radar.cli._serve", lambda port, browser, settings, tour=False, **_: None
+    )
+    during: list[bool] = []
+    real_run_start = cli.run_start
+
+    def watching_run_start(*args: object, **kwargs: object) -> object:
+        during.append(old.exists())  # a long break: the run may still ask "changed?"
+        return real_run_start(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr("job_radar.cli.run_start", watching_run_start)
+    result = runner.invoke(app, ["start", "--no-browser"])
+
+    assert result.exit_code == 0, result.output
+    assert during == [True]
+    assert not old.exists()  # untouched by this run and older than 45 days: deleted after
+
+
+def test_start_stops_when_there_is_nothing_to_score(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import shutil
+
+    shutil.copytree(PACKS, tmp_path / "packs")
+    (tmp_path / "config").mkdir()
+    shutil.copy(EXAMPLE, tmp_path / "config" / "criteria.yaml")
+    (tmp_path / "config" / "companies.csv").write_text("name,website,careers_url,notes,referral\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "job_radar.cli._serve", lambda port, browser, settings, tour=False, **_: None
+    )
+
+    result = runner.invoke(app, ["start", "--no-browser"])
+
+    assert result.exit_code == 1
+    assert "Nothing to score yet" in result.output and "uv run radar setup" in result.output
+    assert "▸ Companies" not in result.output  # the run didn't start
+
+
+def test_start_warns_without_a_cv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import shutil
+
+    shutil.copytree(PACKS, tmp_path / "packs")
+    (tmp_path / "config").mkdir()
+    shutil.copy(EXAMPLE, tmp_path / "config" / "criteria.yaml")
+    (tmp_path / "config" / "companies.csv").write_text(
+        "name,website,careers_url,notes,referral\nHeatco,https://www.heatco.fr,,,\n"
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("job_radar.cli.HttpxClient", _OfflineSite)
+    monkeypatch.setattr(
+        "job_radar.cli._serve", lambda port, browser, settings, tour=False, **_: None
+    )
+
+    result = runner.invoke(app, ["start", "--no-browser"])
+
+    assert result.exit_code == 0, result.output
+    assert "No CV in config/: roles won't be ranked by CV fit" in result.output
+
+
+def test_start_with_the_tour(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import shutil
+
+    shutil.copytree(PACKS, tmp_path / "packs")
+    (tmp_path / "config").mkdir()
+    shutil.copy(EXAMPLE, tmp_path / "config" / "criteria.yaml")
+    (tmp_path / "config" / "companies.csv").write_text(
+        "name,website,careers_url,notes,referral\nHeatco,https://www.heatco.fr,,,\n"
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("job_radar.cli.HttpxClient", _OfflineSite)
+    tours: list[bool] = []
+    monkeypatch.setattr(
+        "job_radar.cli._serve", lambda port, browser, settings, tour=False, **_: tours.append(tour)
+    )
+    for flag in ("--tour", "--orientation"):
+        assert runner.invoke(app, ["start", "--no-browser", flag]).exit_code == 0
+    assert tours == [True, True]

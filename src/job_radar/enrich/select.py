@@ -1,5 +1,6 @@
-"""Pick the model routes for a run: Claude Code when wanted and installed, otherwise the free
-routes (keyword facts, a line-by-line parser for pasted text, website guesses as suggestions).
+"""Pick the model routes for a run: Claude Code only when asked (--use-llm) and installed,
+otherwise the free routes (keyword facts, a line-by-line parser for pasted text, website
+guesses as suggestions). `model_line` is the sentence every run prints about it.
 
 One place decides, so the CLI, Dagster and the API behave the same way.
 """
@@ -24,7 +25,7 @@ from job_radar.enrich.usage import UsageRecorder
 from job_radar.profile.models import Taxonomy
 from job_radar.sources.added import Candidate, parse_text_fallback
 
-NO_LLM = "disabled with --no-llm"
+NO_LLM = "off by default: add --use-llm to use Claude Code"
 
 
 @dataclass(frozen=True)
@@ -65,15 +66,30 @@ def select_extractor(
     recorder: UsageRecorder,
     model: str = DEFAULT_MODEL,
 ) -> ExtractorChoice:
-    """The fact extractor for `radar discover` and Dagster."""
+    """The fact extractor for `radar start` and Dagster."""
     if not use_llm:
         return ExtractorChoice(KeywordExtractor(taxonomy), NO_LLM)
     try:
-        return ExtractorChoice(
-            ClaudeCodeExtractor(taxonomy, model=model, recorder=recorder), missing=None
-        )
+        claude = find_claude()
     except ExtractorUnavailableError as exc:
         return ExtractorChoice(KeywordExtractor(taxonomy), str(exc))
+    extractor = ClaudeCodeExtractor(taxonomy, executable=claude, model=model, recorder=recorder)
+    return ExtractorChoice(extractor, missing=None)
+
+
+def model_line(*, use_llm: bool, missing: str | None) -> str:
+    """What a run says about the model, so you always know whether anything is sent to one."""
+    if not use_llm:
+        return (
+            "Model: off — free keyword facts (rough; nothing is followed automatically). "
+            "Add --use-llm to use Claude Code."
+        )
+    if missing:
+        return f"Model: Claude Code not available ({missing})."
+    return (
+        "Model: Claude Code (your subscription) — company names, websites and website text are "
+        "sent to it; never your CV or criteria."
+    )
 
 
 def select_add_routes(

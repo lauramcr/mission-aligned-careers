@@ -18,8 +18,17 @@ from job_radar.domain.models import Company
 
 USER_CSV_SOURCE = "user_csv"
 
-COMPANY_FIELDS = ["name", "website", "careers_url", "notes", "referral"]
-PENDING_FIELDS = [*COMPANY_FIELDS, "reason", "added_on", "source"]
+COMPANY_FIELDS = ["name", "website", "careers_url", "notes", "referral", "always_follow"]
+PENDING_FIELDS = [
+    "name",
+    "website",
+    "careers_url",
+    "notes",
+    "referral",
+    "reason",
+    "added_on",
+    "source",
+]
 
 _TRACKING_PARAMS = {"source", "locationid", "ref", "gh_src", "fbclid", "gclid", "mc_cid", "mc_eid"}
 
@@ -55,6 +64,7 @@ class CompanyEntry:
     referral: str | None
     source: str = USER_CSV_SOURCE
     source_url: str | None = None
+    always_follow: bool = True  # your list: followed whatever its score (unticked: score decides)
 
 
 @dataclass(frozen=True)
@@ -163,6 +173,7 @@ def _import_row(
         notes=notes or None,
         referral=referral or None,
         source=source,
+        always_follow=_get(row, "always_follow").lower() not in ("no", "false", "0"),
     )
     result.companies.append(entry)
     if from_pending:
@@ -238,5 +249,6 @@ def append_companies(path: Path, entries: Iterable[CompanyEntry]) -> None:
                     "careers_url": e.careers_url or "",
                     "notes": e.notes or "",
                     "referral": e.referral or "",
+                    "always_follow": "" if e.always_follow else "no",
                 }
             )

@@ -1,5 +1,6 @@
-"""radar discover end-to-end with fake HTTP, fake extractor and in-memory DuckDB."""
+"""The discover step end-to-end with fake HTTP, fake extractor and in-memory DuckDB."""
 
+import logging
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -41,15 +42,15 @@ PAGES: dict[str, Response | Exception] = {
         <a href="https://salesbot.io">SalesBot</a>
         <a href="https://borderline.eu">Borderline</a>
         <a href="https://www.oilserv.com">OilServ</a>
-        <a href="https://www.trawa.de">Trawa GmbH</a>
+        <a href="https://www.snowflake.com">Snowflake Inc.</a>
         </body></html>""",
     ),
     "https://www.heatco.fr": ok("https://www.heatco.fr", home("HeatCo", "/careers")),
     "https://salesbot.io": ok("https://salesbot.io", home("SalesBot")),
     "https://borderline.eu": ok("https://borderline.eu", home("Borderline")),
     "https://www.oilserv.com": ok("https://www.oilserv.com", home("OilServ")),
-    "https://www.trawa.de": ok(
-        "https://www.trawa.de", home("trawa", "https://jobs.ashbyhq.com/trawa")
+    "https://www.snowflake.com": ok(
+        "https://www.snowflake.com", home("Snowflake", "https://jobs.ashbyhq.com/snowflake")
     ),
 }
 
@@ -75,13 +76,13 @@ FACTS = {
     "salesbot.io": facts(None, confidence=0.9, data_centrality=DataCentrality.CORE),
     "borderline.eu": facts("climate_fintech"),  # tier B: impact 3.5 -> review? no: skip
     "oilserv.com": facts("energy_efficiency", core_sectors=["oil_and_gas"]),
-    "trawa.de": facts("renewable_energy", office_locations=["Berlin"]),
+    "snowflake.com": facts("renewable_energy", office_locations=["Berlin"]),
 }
 
 
 @pytest.fixture
 def profile() -> Profile:
-    return load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs")
+    return load_profile(REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs")
 
 
 @pytest.fixture
@@ -90,7 +91,8 @@ def repo(tmp_path: Path) -> DuckDBRepository:
     companies = tmp_path / "companies.csv"
     companies.write_text(
         "name,website,careers_url,notes,referral\n"
-        "trawa,https://www.trawa.de,https://jobs.ashbyhq.com/trawa,Alice works there,Alice\n"
+        "Snowflake,https://www.snowflake.com,https://jobs.ashbyhq.com/snowflake,"
+        "Alice works there,Alice\n"
     )
     run_import(repo, companies_csv=companies, pending_csv=tmp_path / "pending.csv", now=T0)
     return repo
@@ -134,10 +136,10 @@ def test_discover_scores_decides_and_watches(
         "salesbot.io": Outcome.REJECTED,  # no climate theme found
         "borderline.eu": Outcome.REJECTED,  # tier B, below review threshold
         "oilserv.com": Outcome.REJECTED,  # excluded core sector
-        "trawa.de": Outcome.FOLLOW,  # your own list: always watched
+        "snowflake.com": Outcome.FOLLOW,  # your own list: always watched
     }
-    # the list's "Trawa GmbH" did not rename your company
-    assert {c.company.name for c in repo.companies()} >= {"trawa", "HeatCo"}
+    # the list's "Snowflake Inc." did not rename your company
+    assert {c.company.name for c in repo.companies()} >= {"Snowflake", "HeatCo"}
     # the auto-followed company is now watched via its careers page
     boards = {b.company_id: b for b in repo.boards()}
     assert boards["heatco.fr"].careers_url == "https://www.heatco.fr/careers"
@@ -410,7 +412,7 @@ KEYWORD_PAGES: dict[str, Response | Exception] = {
     ),
     "https://www.heatco.fr": ok("https://www.heatco.fr", home("HeatCo")),
     "https://salesbot.io": ok("https://salesbot.io", home("SalesBot")),
-    "https://www.trawa.de": ok("https://www.trawa.de", home("trawa")),
+    "https://www.snowflake.com": ok("https://www.snowflake.com", home("Snowflake")),
 }
 
 
@@ -447,3 +449,47 @@ def test_llm_facts_replace_rough_ones_and_are_never_overridden(
     again = discover(repo, profile, keywords, tmp_path, pages=KEYWORD_PAGES)
     heat = {i.company.company_id: i for i in again.items}["heatco.fr"]
     assert heat.outcome is Outcome.FOLLOW and "rough" not in heat.reason
+
+
+def test_progress_says_what_is_being_read(
+    tmp_path: Path, repo: DuckDBRepository, profile: Profile, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.DEBUG, logger="job_radar")
+    discover(repo, profile, FakeExtractor(FACTS), tmp_path)
+    shown = [r.getMessage() for r in caplog.records if r.levelno >= logging.INFO]
+    assert any(m.startswith("▸ Lists:") for m in shown)
+    assert any("Green Fund portfolio" in m and "5 companies" in m for m in shown)
+    assert any(m.startswith("▸ Companies: scoring 5") for m in shown)
+    assert any("HeatCo" in m and "reading https://www.heatco.fr" in m for m in shown), shown
+    assert any("→" in m and "followed" in m for m in shown)  # the outcome once it's read
+
+    caplog.clear()  # a day later nothing is due: no line per company on screen
+    discover(repo, profile, FakeExtractor(FACTS), tmp_path, now=T0 + timedelta(days=1))
+    shown = [r.getMessage() for r in caplog.records if r.levelno >= logging.INFO]
+    assert any("up to date (read 1 day ago)" in m for m in shown), shown
+    assert not any("reading https://" in m for m in shown)
+    assert any(m.startswith("  5 up to date") for m in shown), shown
+    details = [r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG]
+    assert any("HeatCo" in m and "up to date" in m for m in details)  # in the log file
+
+
+def test_your_company_unticked_is_scored_and_unwatched(tmp_path: Path, profile: Profile) -> None:
+    repo = DuckDBRepository(":memory:")
+    companies = tmp_path / "companies.csv"
+    companies.write_text(
+        "name,website,careers_url,notes,referral,always_follow\n"
+        "SalesBot,https://salesbot.io,https://jobs.ashbyhq.com/salesbot,,,no\n"
+        "HeatCo,https://www.heatco.fr,,,,\n"
+    )
+    run_import(repo, companies_csv=companies, pending_csv=tmp_path / "p.csv", now=T0)
+    assert {b.company_id for b in repo.boards()} == {"salesbot.io", "heatco.fr"}
+
+    result = discover(
+        repo, profile, FakeExtractor(FACTS), tmp_path, pages={**PAGES, LIST.url: ok(LIST.url, "")}
+    )
+
+    reasons = {i.company.company_id: (i.outcome, i.reason) for i in result.items}
+    assert reasons["salesbot.io"][0] is Outcome.REVIEW  # unticked: scored, never rejected
+    assert "on your list (the score decides)" in reasons["salesbot.io"][1]
+    assert reasons["heatco.fr"] == (Outcome.FOLLOW, "on your own list")  # ticked by default
+    assert {b.company_id for b in repo.boards()} == {"heatco.fr"}  # its jobs aren't watched

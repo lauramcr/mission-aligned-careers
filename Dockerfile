@@ -16,8 +16,8 @@ RUN useradd --create-home --uid 1000 radar
 WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
 COPY packs ./packs
-COPY demo ./demo
-COPY config/criteria.example.yaml config/sources.example.yaml ./config/
+COPY demo_config ./demo_config
+COPY config_templates ./config_templates
 RUN mkdir -p data demo-run dagster-home && chown -R radar:radar /app
 ENV PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1
 USER radar

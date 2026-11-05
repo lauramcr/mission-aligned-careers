@@ -11,6 +11,7 @@ from pathlib import Path
 
 from dagster import AssetExecutionContext, MaterializeResult, MetadataValue, asset
 
+from job_radar.enrich.select import model_line
 from job_radar.enrich.usage import UsageRecorder
 from job_radar.matching.roles import RoleOutcome
 from job_radar.notify.discover_report import write_discover_report
@@ -60,8 +61,8 @@ def company_scores(context: AssetExecutionContext, radar: RadarResource) -> Mate
     profile, repo = radar.profile(), radar.repository()
     recorder = UsageRecorder()
     choice = radar.extractor(profile.taxonomy, recorder)
-    if choice.missing:
-        context.log.info(f"Using free keyword facts: {choice.missing}")
+    if not radar.replay_dir:
+        context.log.info(model_line(use_llm=radar.use_llm, missing=choice.missing))
     with radar.http() as http, repo.session():
         result = run_discover(
             repo,
@@ -105,9 +106,9 @@ def company_scores(context: AssetExecutionContext, radar: RadarResource) -> Mate
 )
 def scores_csv(radar: RadarResource) -> MaterializeResult[None]:
     """Every scored company, best first, as a CSV."""
-    repo = radar.repository()
+    profile, repo = radar.profile(), radar.repository()
     with repo.session():
-        path = export_scores(repo, Path(radar.scores_csv))
+        path = export_scores(repo, Path(radar.scores_csv), profile=profile)
         rows = len(repo.assessments())
     return MaterializeResult(metadata={"rows": rows, "path": MetadataValue.path(str(path))})
 
@@ -125,7 +126,12 @@ def open_roles(radar: RadarResource) -> MaterializeResult[None]:
     profile, repo = radar.profile(), radar.repository()
     with radar.http() as http, repo.session():
         report = run_roles(
-            repo, http, profile, now=datetime.now(UTC), cv_text=read_cv(Path(radar.cv))
+            repo,
+            http,
+            profile,
+            now=datetime.now(UTC),
+            cv_text=read_cv(Path(radar.cv)),
+            marks=radar.marks(),
         )
     path = write_roles_report(report, profile, Path(radar.reports))
     watch = report.by_outcome(RoleOutcome.WATCH)
@@ -138,7 +144,8 @@ def open_roles(radar: RadarResource) -> MaterializeResult[None]:
             "new_to_watch": sum(report.is_new(r) for r in watch),
             "cv_matched": report.has_cv,
             "to_review": len(report.by_outcome(RoleOutcome.REVIEW)) + len(report.page_mentions),
-            "couldnt_check": len(report.unreadable),
+            "other_roles": len(report.by_outcome(RoleOutcome.OTHER)),
+            "check_by_hand": len(report.hand_checks),
             "problems": len(report.errors),
             "report": MetadataValue.path(str(path)),
         }

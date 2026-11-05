@@ -7,6 +7,7 @@ keeps LLM usage predictable; companies over the limit wait for the next run.
 
 import csv
 import hashlib
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -26,6 +27,8 @@ from job_radar.sources.decisions_csv import Decisions
 from job_radar.sources.list_page import ListSource, read_list
 from job_radar.storage.repository import Repository, StoredCompany
 from job_radar.web.http import HttpClient
+
+log = logging.getLogger(__name__)
 
 TEXT_MAX_AGE = timedelta(days=30)
 FAILED_WEBSITE_RETRY = timedelta(days=7)  # a site that failed is not retried before then
@@ -173,14 +176,28 @@ def assess_companies(
     extraction_limit: int = DEFAULT_EXTRACTION_LIMIT,
     only: set[str] | None = None,
 ) -> None:
-    """Website text -> facts -> score -> decide -> watch, for every company (or `only`)."""
+    """Website text -> facts -> score -> decide -> watch, for every company (or `only`).
+
+    Progress: a line on screen for each company whose website is actually read (or sent to the
+    model), with its outcome; companies already up to date only go to the log file, with a
+    count on screen every PROGRESS_EVERY companies so a long quiet stretch still shows life.
+    """
     companies = sorted(repo.companies(), key=lambda c: (not c.known, c.company.name.lower()))
     if only is not None:
         companies = [c for c in companies if c.company.company_id in only]
     sources_by_company = _sources_by_company(repo)
     reader = WebsiteReader(http)
     fingerprint = profile_fingerprint(profile)
-    for stored in companies:
+    total, quiet = len(companies), 0
+    log.info(
+        "▸ Companies: scoring %d (a website is re-read when older than %d days; "
+        "a site that failed is retried after %d)",
+        total,
+        TEXT_MAX_AGE.days,
+        FAILED_WEBSITE_RETRY.days,
+    )
+    for n, stored in enumerate(companies, start=1):
+        step = _Step(f"[{n:>{len(str(total))}}/{total}] {stored.company.name}")
         item = _process(
             stored,
             sources_by_company.get(stored.company.company_id, []),
@@ -192,7 +209,16 @@ def assess_companies(
             now,
             result,
             extraction_limit,
+            step,
         )
+        outcome = _outcome_words(item)
+        if step.busy:
+            log.info("%s → %s", " " * len(step.label.split("]")[0] + "]"), outcome)
+        else:
+            quiet += 1
+            log.debug("%s: up to date → %s", step.label, outcome)
+            if n % PROGRESS_EVERY == 0:
+                log.info("  [%d/%d] … %d up to date so far", n, total, quiet)
         result.items.append(item)
         if item.assessment is not None:
             repo.save_assessment(
@@ -203,7 +229,13 @@ def assess_companies(
                 scored_at=now,
                 reason=item.reason,
             )
-        _update_watching(stored, item.outcome, repo, now)
+        yours = decisions.for_company(stored.company.company_id, stored.company.name)
+        by_you = yours is not None and yours.decision in ("reject", "review")
+        update_watching(stored, item.outcome, repo, now, by_you=by_you)
+    if quiet:
+        log.info(
+            "  %d up to date (read within %d days): scores refreshed", quiet, TEXT_MAX_AGE.days
+        )
 
 
 def _read_lists(
@@ -217,17 +249,22 @@ def _read_lists(
     force: bool,
 ) -> None:
     existing = {c.company.company_id for c in repo.companies()}
+    log.info("▸ Lists: %d (each re-read every %d days)", len(sources), max_age.days)
     for source in sources:
         last_read = repo.list_last_read(source.url)
         if last_read is not None and now - last_read < max_age and not force:
+            log.info("  %s: up to date (read %s)", source.name, _ago(now - last_read))
             result.lists.append(ListReport(source.name, source.url, 0, 0, 0, None, last_read))
             continue
+        log.info("  %s: reading %s…", source.name, source.url)
         listed = read_list(source, http)
         if listed.error is None:
             repo.mark_list_read(source.url, source.name, now)
         entries = [
             CompanyEntry(
-                company=Company.from_website(name=c.name, website=c.website or "", seen_at=now),
+                company=Company.from_website(
+                    name=c.name, website=c.website or "", seen_at=now
+                ).model_copy(update={"country": c.country}),
                 careers_url=None,
                 notes=c.description,
                 referral=None,
@@ -257,6 +294,10 @@ def _read_lists(
         )
         if listed.error:
             result.errors.append(f"{source.name}: {listed.error}")
+            log.info("  %s: couldn't be read: %s", source.name, listed.error)
+        else:
+            missing = f", {len(listed.unresolved)} without a website" if listed.unresolved else ""
+            log.info("  %s: %d companies (%d new%s)", source.name, len(entries), len(new), missing)
 
 
 def add_pending(
@@ -288,6 +329,39 @@ def add_pending(
                 writer.writerow({k: row.get(k, "") for k in PENDING_FIELDS})
 
 
+PROGRESS_EVERY = 50  # a "still going" line on screen every this many quiet companies
+
+
+class _Step:
+    """One company's progress: its label ("[12/489] Google"), and whether anything slow happened
+    (a website read, a model call), which decides if its outcome is shown on screen."""
+
+    def __init__(self, label: str) -> None:
+        self.label = label
+        self.busy = False
+
+    def say(self, what: str) -> None:
+        """Show what is happening now: the label the first time, then indented."""
+        indent = " " * len(self.label.split("]")[0] + "]")
+        log.info("%s %s", self.label + ":" if not self.busy else indent, what)
+        self.busy = True
+
+
+def _outcome_words(item: DiscoveredItem) -> str:
+    """'4.2 followed', '3.1 worth a look', 'rejected', or 'not scored (no facts yet)'."""
+    words = {Outcome.FOLLOW: "followed", Outcome.REVIEW: "worth a look"}
+    label = words.get(item.outcome, str(item.outcome))
+    if item.assessment is None:
+        return f"{label} (no facts yet)"
+    return f"{item.assessment.overall:.1f} {label}"
+
+
+def _ago(delta: timedelta) -> str:
+    """'today', '1 day ago', '12 days ago'."""
+    days = delta.days
+    return "today" if days == 0 else f"{days} day{'s' if days > 1 else ''} ago"
+
+
 def _sources_by_company(repo: Repository) -> dict[str, list[str]]:
     _, rows = repo.query(
         "SELECT company_id, list(source_name ORDER BY source_name) FROM company_sources "
@@ -307,10 +381,11 @@ def _process(
     now: datetime,
     result: DiscoverResult,
     limit: int,
+    step: "_Step",
 ) -> DiscoveredItem:
     company = stored.company
     cid = company.company_id
-    facts = _facts(stored, repo, reader, extractor, now, result, limit)
+    facts = _facts(stored, repo, reader, extractor, now, result, limit, step)
     hiring = any(family_of(p.title, profile) for p in repo.postings(company_id=cid, open_only=True))
     assessment = score_company(facts, profile, hiring_target_role=hiring) if facts else None
     user = decisions.for_company(cid, company.name)
@@ -320,6 +395,7 @@ def _process(
         known=stored.known,
         user_decision=user.decision if user else None,
         note=user.note if user else "",
+        always_follow=stored.always_follow,
     )
     offices = list(facts.office_locations) if facts else []
     reason = decision.reason
@@ -354,10 +430,11 @@ def _facts(
     now: datetime,
     result: DiscoverResult,
     limit: int,
+    step: "_Step",
 ) -> CompanyFacts | None:
     cid, name = stored.company.company_id, stored.company.name
     # Read the website even without an extractor: it also tells us where the careers page is.
-    website = _website_text(stored, repo, reader, now, result)
+    website = _website_text(stored, repo, reader, now, result, step)
     if extractor is None:
         return repo.latest_facts(cid)
     if not extractor.metered:  # rough facts never replace LLM facts
@@ -377,10 +454,13 @@ def _facts(
     if extractor.metered and result.extracted >= limit:
         result.waiting += 1
         return repo.latest_facts(cid)
+    if extractor.metered:  # a model call takes a while: say so
+        step.say(f"asking the model about {name}…")
     try:
         facts = extractor.extract(name=name, website=stored.company.website, text=text)
     except ExtractionError as exc:
         result.errors.append(f"{name}: {exc}")
+        step.say(f"facts couldn't be extracted: {exc}")
         return repo.latest_facts(cid)
     if extractor.metered:
         result.extracted += 1
@@ -394,6 +474,7 @@ def _website_text(
     reader: WebsiteReader,
     now: datetime,
     result: DiscoverResult,
+    step: "_Step",
 ) -> WebsiteText | None:
     cid = stored.company.company_id
     cached = repo.website_text(cid)
@@ -406,9 +487,11 @@ def _website_text(
             f"{stored.company.name}: website unavailable ({status[1]}; retried after {retry})"
         )
         return cached
+    step.say(f"reading {stored.company.website}…")
     try:
         text = reader.read(stored.company.website)
     except WebsiteUnavailableError as exc:
+        step.say(f"website unavailable: {exc}")
         result.errors.append(f"{stored.company.name}: website unavailable ({exc})")
         repo.record_website_status(cid, ok=False, reason=str(exc), at=now)
         return cached
@@ -418,17 +501,28 @@ def _website_text(
     return text
 
 
-def _update_watching(
-    stored: StoredCompany, outcome: Outcome, repo: Repository, now: datetime
+def update_watching(
+    stored: StoredCompany,
+    outcome: Outcome,
+    repo: Repository,
+    now: datetime,
+    *,
+    by_you: bool = False,
 ) -> None:
-    """Followed companies get a board (watched weekly); rejected discovered ones lose it.
-    A board without a careers link is completed from the company's website when possible."""
+    """Followed companies get a board (watched weekly). A company leaves watching when the
+    rules reject it (unless it is on your own list), or when you rejected it or put it in worth
+    a look yourself (`by_you`, even for your own list). A board without a careers link is
+    completed from your list or the company's website when possible."""
     cid = stored.company.company_id
     board = next((b for b in repo.boards() if b.company_id == cid), None)
-    careers = repo.careers_url_for(cid)
+    careers = stored.careers_url or repo.careers_url_for(cid)
     if outcome is Outcome.FOLLOW and (board is None or board.ref.kind is BoardKind.NONE):
         if board is None or careers:
             ref = classify_careers_url(careers) if careers else BoardRef(BoardKind.NONE, None)
             repo.upsert_board(cid, ref, careers, now)
-    elif outcome is Outcome.REJECTED and board is not None and not stored.known:
+    elif board is not None and (
+        (outcome is Outcome.REJECTED and (by_you or not stored.known))
+        or (outcome is Outcome.REVIEW and by_you)
+        or (stored.known and not stored.always_follow)  # your list, unticked: not followed now
+    ):
         repo.remove_board(cid)

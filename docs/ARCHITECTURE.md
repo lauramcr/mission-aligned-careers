@@ -17,7 +17,7 @@ the discovery sources they want, and builds their own local database.
 | File | Committed? | Contains |
 |---|---|---|
 | `packs/<pack>/taxonomy.yaml` | yes (shareable) | **Vocabulary**: themes (with descriptions for the LLM prompt), sectors, organisation types, business models, role families (with EN/FR title keywords), flag texts |
-| `config/criteria.example.yaml` | yes | A complete example of criteria |
+| `config_templates/criteria.yaml` | yes | A complete example of criteria |
 | `config/criteria.yaml` | **no** (gitignored) | The user's **preferences**: theme tiers and bonuses, excluded sectors, penalties, practical/career scoring values, target roles, contracts, office-days curve, weights, thresholds, calibration companies |
 
 Criteria may only reference ids defined in the pack; `radar profile check`
@@ -51,9 +51,9 @@ idempotent; `--force` options override.
 
 | Step | Bookkeeping | Due when |
 |---|---|---|
-| Job check per followed company (`radar roles`, Dagster `weekly_radar`) | `career_boards.last_checked_at`; roles keep `first_seen_at` and `found_run_id` | never checked, or ≥ 7 days (`--max-age-days`) |
-| Website text + facts (`radar discover`) | `company_texts.fetched_at`; facts keyed by content hash + extraction version | ≥ 30 days, or the text changed; a site that failed is retried after 7 days (`website_status`) |
-| List pages (`radar discover`) | `list_reads.last_read_at` | ≥ 30 days (`--force-lists`) |
+| Job check per followed company (`radar start`, Dagster `weekly_radar`) | `career_boards.last_checked_at`; roles keep `first_seen_at` and `found_run_id` | never checked, or ≥ 7 days (`--force` now) |
+| Website text + facts (`radar start`) | `company_texts.fetched_at`; facts keyed by content hash + extraction version | ≥ 30 days, or the text changed; a site that failed is retried after 7 days (`website_status`) |
+| List pages (`radar start`) | `list_reads.last_read_at` | ≥ 30 days (`--force` now) |
 | Similar-company search (planned) | per run | monthly, plus a manual "search again" |
 | Scores | recomputed every run | always (free) |
 
@@ -102,7 +102,9 @@ src/job_radar/
   pipeline/      # use cases: discover, enrich, score, watch, match, notify
   cli.py         # typer: `radar ...`
 packs/climate/   # domain pack
-config/          # criteria.example.yaml (+ gitignored criteria.yaml, companies.csv, cv.*)
+config/          # yours, gitignored, created by `radar setup`: cv.*, criteria.yaml, companies.csv…
+config_templates/ # committed starting files `radar setup` copies
+demo_config/     # committed fictional demo person + recordings (offline replay)
 tests/{unit,contract,integration,fixtures}/
 ```
 
@@ -152,10 +154,10 @@ tests/{unit,contract,integration,fixtures}/
 - seniority: `junior | mid | senior | lead | executive | unknown`
 - salary period: `year | month | day | hour`
 
-**Views**: `v_company_overview`, `v_review_queue`, `v_new_to_you`,
-`v_open_application_candidates`, `v_new_jobs_this_week`,
-`v_discovery_funnel` (found → scored → followed → applied, per source),
-`v_scoring_agreement`, `v_pipeline_health`.
+**Views** (migration 010): `v_source_funnel` (per source: companies → scored → followed →
+job boards → open roles), `v_roles_by_week` (new and closed roles), `v_board_health`
+(failure rate per board type), `v_llm_usage` (calls, tokens, cost per run). Planned:
+`v_review_queue`, `v_open_application_candidates`, `v_scoring_agreement`.
 
 **Concurrency:** DuckDB allows one writer process. Every component opens a
 short-lived connection per action and closes it, so the review app and a
@@ -257,7 +259,7 @@ ATS, so ATS feeds cover much of it.
 
 ## 8. Interfaces
 
-- **CLI** — one command per pipeline (`radar add`, `discover`, `roles`, `companies …`, `demo`, `doctor`).
+- **CLI** — `radar setup`, `start` (everything that is due), `demo`, `add`, `decide`, `companies …`; `radar` alone prints the setup checklist.
 - **Digest** — weekly Markdown file: new matching jobs, new-to-you companies,
   open-application candidates, pipeline errors. Broad by default (the user
   reviews ~1h/week).
@@ -282,7 +284,7 @@ ATS, so ATS feeds cover much of it.
 | 1 ✅ | Scaffold, domain ids/models, pack + criteria, profile loader, `radar profile check` | config validates with located errors; tests, ruff, mypy green |
 | 2 ✅ | **Watch slice**: CSV of known companies (+ pending list) → polite HttpClient → Ashby, Recruitee, JSON-LD, careers-page change watcher → DuckDB → code-only prefilter → Markdown digest; `radar run-weekly` (later folded into the roles report, §12) | a weekly digest from the user's companies; idempotent re-runs |
 | 3 🟡 | **Company-led discovery + scoring**: list pages (fund portfolios, event exhibitors) in `config/sources.yaml` → website text → facts via Claude Code (`claude -p --json-schema`, subscription) → CompanyScorer → follow / review / skip (auto-follow thresholds; `config/decisions.csv` overrides) → `radar discover` report; followed companies join the weekly watch | built and tested with fakes; real run pending Claude Code install |
-| 3b | Role-led discovery: job boards from the user's list (Cleantech Open France, makesense, VC portfolio boards), France Travail API | the digest shows roles at companies the user didn't list |
+| 3b | Role-led discovery: job boards that list many companies (VC portfolio boards, impact job boards), France Travail API | the digest shows roles at companies the user didn't list |
 | 3c ✅ | Role lists (to watch / to review / rejected) with freshness: due-only checks, new / still open / closed | `radar roles` twice in a week re-uses stored roles |
 | 3d ✅ | Intake: `radar add` (names, URLs, CSV exports such as LinkedIn's, pasted text); name → website via Claude Code + web search, verified in code; free guesses as suggestions; scored by default, `--watch` for your own list; Claude usage measured per call (`llm_calls`) | names become verified, scored companies or pending with suggestions |
 | 3e | Find similar companies: follow investors on top companies' sites, fund job boards (e.g. Marble), Claude lookalike search (capped, monthly + manual) | new companies scored through the same pipeline |

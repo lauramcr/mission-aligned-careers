@@ -76,6 +76,21 @@ def family_of(text: str, profile: Profile) -> str | None:
     return None
 
 
+def pack_family_of(text: str, profile: Profile) -> str | None:
+    """The role family of `text` among all the pack's families: your target families first
+    (so "Sales Data Analyst" stays data analysis), then the others in pack order. None when no
+    family's title keywords appear."""
+    target = family_of(text, profile)
+    if target is not None:
+        return target
+    for family, definition in profile.taxonomy.role_families.items():
+        if family not in profile.criteria.roles.target_families and _contains(
+            text, definition.title_keywords
+        ):
+            return family
+    return None
+
+
 MAX_TITLE_LINE = 100
 
 
@@ -126,6 +141,25 @@ def within_reach(place: str, profile: Profile) -> bool:
     """True when `place` mentions home or one of `also_accept_places`."""
     location = profile.criteria.location
     return _contains(place, [location.home.split(",")[0], *location.also_accept_places])
+
+
+def places_of(posting: JobPosting) -> list[str]:
+    """The places an advert names ("San Francisco, California; New York" -> two places)."""
+    return [p.strip() for p in (posting.location or "").split(";") if p.strip()]
+
+
+def location_group(posting: JobPosting, profile: Profile) -> str:
+    """Where a role is, for filtering: 'reach' (home or a place you accept), 'remote' (fully
+    remote, based in a region you accept), 'elsewhere', or 'unstated'."""
+    if not posting.location:
+        return "unstated"
+    if within_reach(posting.location, profile):
+        return "reach"
+    if posting.remote is RemotePolicy.REMOTE and _contains(
+        posting.location, profile.criteria.location.accept_remote_in
+    ):
+        return "remote"
+    return "elsewhere"
 
 
 def _location_ok(posting: JobPosting, profile: Profile) -> bool:

@@ -8,6 +8,8 @@ servers "has this changed?" (ETag / Last-Modified) once an entry is stale.
 
 import hashlib
 import json
+import logging
+import os
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass
@@ -23,6 +25,14 @@ from job_radar import __version__
 
 USER_AGENT = f"mission-aligned-careers/{__version__} (personal job-search tool)"
 _MAX_RETRY_AFTER = 60.0
+# After a run, pages it didn't fetch again and older than this are deleted: one 30-day website
+# cycle plus slack, so a re-read can still ask "has this page changed?". Cleaning after the run
+# (never before) keeps that working however long the break between runs.
+CACHE_KEEP_SECONDS = 45 * 86400
+CACHE_TTL_SECONDS = 12 * 3600  # a page fetched less than this ago is reused as is
+_SAY_WAITS_OVER = 2.0  # seconds: longer waits are shown on screen, so a pause is explained
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -81,7 +91,10 @@ class DiskCache:
     """One JSON file per URL. Fresh entries are reused; stale ones are revalidated."""
 
     def __init__(
-        self, directory: Path, ttl_seconds: float, clock: Callable[[], float] = time.time
+        self,
+        directory: Path,
+        ttl_seconds: float = CACHE_TTL_SECONDS,
+        clock: Callable[[], float] = time.time,
     ) -> None:
         self._dir = directory
         self._ttl = ttl_seconds
@@ -113,9 +126,28 @@ class DiskCache:
             CacheEntry(entry.url, entry.text, self._clock(), entry.etag, entry.last_modified)
         )
 
+    def prune(self, max_age_seconds: float) -> int:
+        """Delete pages fetched more than `max_age_seconds` ago (they hold whole pages, some
+        with people's names: keep only what recent runs need). Returns how many were deleted."""
+        if not self._dir.is_dir():
+            return 0
+        oldest = self._clock() - max_age_seconds
+        deleted = 0
+        for path in self._dir.glob("*.json"):
+            if path.stat().st_mtime < oldest:
+                path.unlink(missing_ok=True)
+                deleted += 1
+        if deleted:
+            log.info(
+                "  cache: %d pages older than %d days deleted", deleted, max_age_seconds // 86400
+            )
+        return deleted
+
     def _write(self, entry: CacheEntry) -> None:
         self._dir.mkdir(parents=True, exist_ok=True)
-        self._path(entry.url).write_text(json.dumps(asdict(entry)), encoding="utf-8")
+        path = self._path(entry.url)
+        path.write_text(json.dumps(asdict(entry)), encoding="utf-8")
+        os.utime(path, (entry.fetched_at, entry.fetched_at))  # the file's date = fetch time
 
     def _path(self, url: str) -> Path:
         return self._dir / f"{hashlib.sha256(url.encode()).hexdigest()}.json"
@@ -182,6 +214,7 @@ class HttpxClient:
             raise FetchError(url, "invalid URL")
         entry = self._cache.load(url) if self._cache else None
         if entry is not None and self._cache is not None and self._cache.is_fresh(entry):
+            log.debug("GET %s → from cache", url)
             return Response(url=url, status_code=200, text=entry.text)
 
         if self._respect_robots and not self._allowed(url):
@@ -233,19 +266,28 @@ class HttpxClient:
         reason = ""
         for attempt in range(self._max_retries + 1):
             self._wait_for(host)
+            started = self._clock()
             try:
                 response = self._client.get(url, headers=dict(headers))
             except httpx.TransportError as exc:  # network trouble: worth retrying
                 reason = f"{type(exc).__name__}: {exc}"
                 delay = self._backoff * 2**attempt
+                what = f"didn't answer ({reason})"
+                log.debug("GET %s → %s", url, reason)
             except (httpx.RequestError, httpx.InvalidURL) as exc:  # redirect loop, bad URL...
+                log.debug("GET %s → %s: %s", url, type(exc).__name__, exc)
                 raise FetchError(url, f"{type(exc).__name__}: {exc}") from exc
             else:
+                took = self._clock() - started
+                log.debug("GET %s → %d (%.1f s)", url, response.status_code, took)
                 if response.status_code != 429 and response.status_code < 500:
                     return response
                 reason = f"HTTP {response.status_code}"
                 delay = _retry_after(response) or self._backoff * 2**attempt
+                what = f"answered {reason}"
             if attempt < self._max_retries:
+                say = log.info if delay > _SAY_WAITS_OVER else log.debug
+                say("  waiting %.0f s: %s %s, trying again", delay, host, what)
                 self._sleep(delay)
         raise FetchError(url, f"gave up after {self._max_retries + 1} attempts ({reason})")
 

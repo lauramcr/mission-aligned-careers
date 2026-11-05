@@ -26,7 +26,7 @@ and why.
           domain/ (Company, JobPosting, CompanyFacts)   profile/ (pack + criteria)
 ```
 
-Rules that shape the code (see `CLAUDE.md`):
+Rules that shape the code:
 - **The core has no I/O.** `domain/`, `scoring/` and `profile/` never import HTTP or database
   libraries, so they are pure and easy to test.
 - **Everything external sits behind an interface** with a fake for tests: `HttpClient`
@@ -41,21 +41,22 @@ Rules that shape the code (see `CLAUDE.md`):
 | Package | What it does | Main files |
 |---|---|---|
 | `domain/` | the core records | `models.py` (Company, JobPosting, contract / remote / seniority vocabularies), `facts.py` (CompanyFacts), `ids.py` (company_id = registered domain, job_id) |
-| `profile/` | pack + criteria, validated | `models.py` (every YAML section as a typed model), `loader.py` (load and cross-check) |
-| `settings.py` | where files live | `RadarPaths` (defaults + `JOB_RADAR_*` overrides), `read_cv` |
+| `profile/` | pack + criteria, validated | `models.py` (every YAML section as a typed model, `Vocabulary` for your own terms), `loader.py` (load, merge `my_vocabulary.yaml`, cross-check) |
+| `settings.py` | where files live | `RadarPaths` (defaults: `config/` and `data/`, + `JOB_RADAR_*` overrides), `find_cv` / `read_cv` (PDF, Word, Markdown, text) |
 | `web/` | fetching pages | `http.py` (robots.txt, 1 req/s per site, retries, cache), `replay.py` (demo's recorded web) |
-| `sources/` | where companies come from | `list_page.py` (any list page, list registry), `norrsken.py`, `sitemap_profiles.py`, `csv_source.py` (your list + pending), `added.py` (`radar add` inputs), `decisions_csv.py` |
+| `sources/` | where companies come from | `list_page.py` (any list page, list registry), `norrsken.py`, `sitemap_profiles.py`, `ycombinator.py`, `csv_source.py` (your list + pending), `added.py` (`radar add` inputs), `decisions_csv.py`, `marks_csv.py` (your saved / ignored roles, checked / ignored careers pages) |
 | `boards/` | where jobs come from | `classify.py` (what kind of careers link), `detect.py` (board inside a careers page), `registry.py` (reader registry, feed helpers), one file per board (Ashby, Greenhouse, Workable, Teamtailor, Personio, BambooHR, Recruitee), `jsonld.py`, `parsing.py` |
-| `enrich/` | learning about companies | `website.py` (read homepage + about page), `resolve.py` (name → website, verification), `extractor.py` (facts with Claude), `keywords.py` (facts without a model), `replay.py` (record / replay answers), `select.py` (which route), `careers_guess.py`, `usage.py`, `prompts/` (versioned prompt) |
+| `enrich/` | learning about companies | `website.py` (read homepage + about page), `resolve.py` (name → website, verification), `extractor.py` (facts with Claude), `keywords.py` (facts without a model, offices from the pack's places), `replay.py` (record / replay answers), `select.py` (which route), `careers_guess.py`, `usage.py`, `prompts/` (versioned prompt) |
 | `scoring/` | turning facts into decisions | `company.py` (impact / practical / career / overall, with explanations), `decide.py` (follow / worth a look / rejected) |
-| `matching/` | roles | `prefilter.py` (text normalisation, role family, location), `roles.py` (to watch / to review / rejected), `cv.py` (skills and CV fit) |
+| `matching/` | roles | `prefilter.py` (text normalisation, role family: `family_of` for yours, `pack_family_of` for any, location: `location_group` for the dashboard filter), `roles.py` (to watch / to review / rejected), `cv.py` (skills and CV fit) |
 | `watch/` | plain careers pages | `page_text.py` (visible lines of a page) |
-| `pipeline/` | the use cases | `watch.py` (import your list, watch boards), `discover.py`, `add.py`, `roles.py`, `find_careers.py`, `demo.py`, `doctor.py` |
+| `pipeline/` | the use cases | `watch.py` (import your list, watch boards), `discover.py`, `add.py`, `roles.py`, `hand_checks.py` (careers pages to check by hand), `setup.py` (CV, criteria, lists, companies), `setup_page.py` (what the setup page reads and saves), `start.py` (the run behind `radar start`, *Save and run* and the demo), `decide.py` (move a company yourself, applied at once: `radar decide` and the dashboard menu), `run_all.py` (the run shared by `radar start` and `radar demo`), `demo.py` (copies the demo kit into `demo-run/` and runs on the copy), `find_careers.py`, `doctor.py` (the checklist `uv run radar` prints) |
 | `notify/` | outputs | `discover_report.py`, `roles_report.py` (Markdown), `scores_csv.py` |
 | `storage/` | the database | `repository.py` (the interface), `duckdb_repository.py`, `migrations/` (numbered SQL) |
 | `orchestration/` | Dagster | `assets.py`, `checks.py`, `resources.py`, `definitions.py` |
-| `api/` | FastAPI | `app.py` (endpoints + dashboard), `schemas.py`, `runs.py`, `templates/dashboard.html` |
+| `api/` | FastAPI | `app.py` (endpoints + dashboard), `schemas.py`, `runs.py`, `serve.py` (open the browser once the server answers), `setup_routes.py` + `templates/setup.html` (the setup page and its tour), `templates/_tour.html` (the tour shared by both pages), `runs.py` (Dagster jobs, and `LocalRun` for *Save and run*), `templates/dashboard.html` |
 | `cli.py` | the `radar` command | one function per command, each calling a pipeline |
+| `logs.py` | progress and the log file | `setup_logging`: INFO on screen, everything appended to `data/logs/radar.log` with timestamps; modules log with `logging.getLogger(__name__)` |
 
 ## Database tables
 
@@ -73,7 +74,7 @@ Rules that shape the code (see `CLAUDE.md`):
 | `list_reads` | when each list was last read |
 | `pipeline_runs`, `llm_calls` | every run (status, counts, problems) and every model call |
 
-## Walk 1 — `radar add --text "Met the Kanop team at ChangeNOW"`
+## Walk 1 — `radar add --text "Met the Google team at ChangeNOW"`
 
 1. `cli.py: add_command` loads your profile, opens the database, imports your list
    (`pipeline/watch.py: run_import`).
@@ -91,7 +92,7 @@ Rules that shape the code (see `CLAUDE.md`):
    (`career_boards`).
 6. `notify/discover_report.py` writes `data/digests/added-<date>.md`.
 
-## Walk 2 — the weekly run (`radar roles`, or Dagster's `weekly_radar`)
+## Walk 2 — the weekly run (`radar start`, or Dagster's `weekly_radar`)
 
 1. `pipeline/roles.py: run_roles` starts a run (`pipeline_runs`).
 2. `pipeline/watch.py: watch_boards` takes each followed company's board that is due (7 days):
@@ -99,9 +100,13 @@ Rules that shape the code (see `CLAUDE.md`):
      updates known ones and closes those gone (`job_postings`);
    - a plain careers page → `detect_board` looks for an embedded board; if none, the page's
      lines are kept (`page_snapshots`);
-   - anything unreadable → "check by hand", with the reason.
+   - anything unreadable → its reason is stored on the board (`last_error`).
 3. `build_roles_report` sorts every open role (`matching/roles.py: classify_role`), adds the CV
-   fit (`matching/cv.py`), careers-page mentions and the pending list.
+   fit (`matching/cv.py`), careers-page mentions, the pending list and the careers pages to
+   check by hand (`pipeline/hand_checks.py`: followed boards that can't be read, plus
+   worth-a-look companies above `check_by_hand.min_overall` with no careers page found or an
+   unreadable website — best score first; the dashboard and the scores CSV's `jobs_check`
+   column use the same list).
 4. `notify/roles_report.py` writes `roles-<date>.md`. In Dagster the same functions run as the
    `open_roles` asset, after `company_scores` (discovery) and before checks.
 
@@ -109,7 +114,7 @@ Rules that shape the code (see `CLAUDE.md`):
 
 1. Uvicorn passes the request to `api/app.py: dashboard` (an endpoint inside `create_app`).
 2. It reads only — nothing is fetched or scored: `repo.assessments()` (companies),
-   `build_roles_report` (roles + CV fit, CV read from `config/cv.md`), `pipeline_runs` (last
+   `build_roles_report` (roles + CV fit, CV read from `config/cv.*`), `pipeline_runs` (last
    updated).
 3. `api/templates/dashboard.html` renders the tables. To refresh the data, a pipeline must run
    first (CLI, Dagster, or `POST /runs/weekly_radar`).

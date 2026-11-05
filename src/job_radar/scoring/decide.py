@@ -40,17 +40,30 @@ def decide(
     known: bool,
     user_decision: str | None,
     note: str = "",
+    always_follow: bool = True,
 ) -> Decision:
-    """Turn a score into an outcome. Your own decisions win, then your own list (always
-    followed), then the rules: excluded sector or no theme -> rejected; high impact, high
-    overall and confident facts -> followed; otherwise worth a look.
+    """Turn a score into an outcome. Your own decisions win, then your own list (followed, or
+    with *Always follow* unticked: the rules decide, but never reject it), then the rules:
+    excluded sector or no theme -> rejected; high impact, high overall and confident facts ->
+    followed; otherwise worth a look.
     """
     if user_decision == "reject":
         return Decision(Outcome.REJECTED, "you rejected it" + (f": {note}" if note else ""))
     if user_decision == "follow":
         return Decision(Outcome.FOLLOW, "you chose to follow it")
-    if known:
+    if user_decision == "review":
+        return Decision(Outcome.REVIEW, "you put it in worth a look")
+    if known and always_follow:
         return Decision(Outcome.FOLLOW, "on your own list")
+    decision = _rules(assessment, profile)
+    if not known or decision.outcome is Outcome.UNSCORED:
+        return decision
+    outcome = Outcome.REVIEW if decision.outcome is Outcome.REJECTED else decision.outcome
+    return Decision(outcome, f"on your list (the score decides): {decision.reason}")
+
+
+def _rules(assessment: FitAssessment | None, profile: Profile) -> Decision:
+    """The rules alone, from the score."""
     if assessment is None:
         return Decision(Outcome.UNSCORED, "not scored yet")
     if assessment.hidden:

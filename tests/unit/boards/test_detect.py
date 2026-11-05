@@ -51,8 +51,8 @@ def html(*snippets: str) -> str:
             BoardRef(BoardKind.BAMBOOHR, "amini"),
         ),
         (
-            '<a href="https://up42gmbh.recruitee.com/o/designer">Designer</a>',
-            BoardRef(BoardKind.RECRUITEE, "up42gmbh"),
+            '<a href="https://wannabeatonytoo.recruitee.com/o/designer">Designer</a>',
+            BoardRef(BoardKind.RECRUITEE, "wannabeatonytoo"),
         ),
     ],
 )

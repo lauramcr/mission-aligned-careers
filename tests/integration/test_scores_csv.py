@@ -7,18 +7,20 @@ from pathlib import Path
 from job_radar.domain.facts import CompanyFacts
 from job_radar.domain.models import Company
 from job_radar.notify.scores_csv import export_scores
+from job_radar.profile.loader import load_profile
 from job_radar.scoring.company import Contribution, FitAssessment
 from job_radar.scoring.decide import Outcome
 from job_radar.sources.csv_source import CompanyEntry
 from job_radar.storage.duckdb_repository import DuckDBRepository
 
+REPO = Path(__file__).resolve().parents[2]
 T0 = datetime(2026, 10, 16, 9, 0, tzinfo=UTC)
 
 
 def test_export_scores(tmp_path: Path) -> None:
     repo = DuckDBRepository(":memory:")
     for name, site, source, overall in [
-        ("Aerleum", "https://aerleum.com", "Norrsken Impact/100", 4.35),
+        ("Patagonia", "https://patagonia.com", "Norrsken Impact/100", 4.35),
         ("SalesBot", "https://salesbot.io", "Station F", 1.5),
     ]:
         company = Company.from_website(name=name, website=site, seen_at=T0)
@@ -43,7 +45,7 @@ def test_export_scores(tmp_path: Path) -> None:
             company.company_id, assessment, outcome, "p", scored_at=T0, reason=reason
         )
     repo.save_facts(
-        "aerleum.com",
+        "patagonia.com",
         "v1",
         "h",
         CompanyFacts(short_description="CO2 to fuels", office_locations=["Paris"], confidence=0.9),
@@ -52,10 +54,13 @@ def test_export_scores(tmp_path: Path) -> None:
 
     repo.flag_careers_missing("salesbot.io", True, at=T0)
 
-    path = export_scores(repo, tmp_path / "scores.csv")
+    profile = load_profile(
+        REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs"
+    )
+    path = export_scores(repo, tmp_path / "scores.csv", profile=profile)
     with path.open(encoding="utf-8-sig") as f:
         rows = list(csv.DictReader(f))
-    assert [r["name"] for r in rows] == ["Aerleum", "SalesBot"]  # best first
+    assert [r["name"] for r in rows] == ["Patagonia", "SalesBot"]  # best first
     top = rows[0]
     assert top["overall"] == "4.35" and top["impact"] == "5"
     assert top["outcome"] == "follow" and top["reason"] == "meets auto-follow"
@@ -63,6 +68,6 @@ def test_export_scores(tmp_path: Path) -> None:
     assert top["flags"] == "funding_unclear"
     assert top["description"] == "CO2 to fuels" and top["offices"] == "Paris"
     assert "carbon_capture_removal is tier A" in top["why"]
-    assert top["website"] == "https://aerleum.com"
+    assert top["website"] == "https://patagonia.com"
     assert top["careers_page"] == "unknown"  # website not read yet
     assert rows[1]["careers_page"] == "missing"

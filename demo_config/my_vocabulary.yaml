@@ -1,0 +1,6 @@
+# Alex's own terms (added on the setup page in a real setup): what to look for on a company's
+# website. Merged with the climate pack's vocabulary.
+themes:
+  deep_tech:
+    label: Deep tech
+    keywords: [deep tech, deeptech, hard tech]

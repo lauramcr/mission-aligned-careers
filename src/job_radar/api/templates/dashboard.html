@@ -17,6 +17,7 @@
   h1 { font-size: 22px; margin: 0 0 4px; }
   h2 { font-size: 18px; margin: 28px 0 8px; }
   .muted { color: var(--muted); }
+  .links { margin: 0 0 2px; }
   .updated { margin: 0 0 8px; }
   details { background: var(--card); border: 1px solid var(--line); border-radius: 8px;
             margin: 8px 0; }
@@ -31,7 +32,34 @@
   .score { font-weight: 600; }
   .ok { color: var(--accent); } .warn { color: var(--warn); } .bad { color: var(--bad); }
   .small { font-size: 12px; }
+  button.more { background: none; border: none; padding: 0; color: inherit; cursor: pointer;
+                text-decoration: underline; font: inherit; }
   .empty { padding: 0 12px 12px; }
+  .empty-state { background: var(--card); border: 1px dashed var(--line); border-radius: 8px;
+                 padding: 10px 12px; color: var(--muted); }
+  td.actions { white-space: nowrap; }
+  button.act { font: inherit; font-size: 12px; padding: 2px 6px; margin: 1px 0; cursor: pointer;
+               background: var(--card); color: var(--fg); border: 1px solid var(--line);
+               border-radius: 6px; }
+  button.act.star { border: none; font-size: 16px; padding: 0 4px; color: var(--warn); }
+  .filter-bar { margin: 8px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .filter-bar .dd { position: relative; }
+  .filter-bar .dd > summary { list-style: none; cursor: pointer; padding: 2px 8px;
+                                border: 1px solid var(--line); border-radius: 6px;
+                                background: var(--card); font-weight: normal; }
+  .filter-bar .dd > summary::-webkit-details-marker { display: none; }
+  .filter-bar .dd > summary::after { content: " ▾"; color: var(--muted); }
+  .filter-bar .dd.on > summary { border-color: var(--accent); color: var(--accent); }
+  .filter-bar .panel { position: absolute; z-index: 10; top: calc(100% + 4px); left: 0;
+                         min-width: 240px; max-height: 320px; overflow-y: auto; padding: 8px;
+                         background: var(--card); border: 1px solid var(--line);
+                         border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, .12); }
+  .filter-bar .panel label { display: block; margin: 2px 0; white-space: nowrap; }
+  #role-filters #place-search { width: 100%; margin-bottom: 4px; }
+  .tag { font-size: 12px; border: 1px solid var(--line); border-radius: 10px; padding: 0 6px; }
+  #suggestions { background: var(--card); border: 1px solid var(--accent); border-radius: 8px;
+                 padding: 4px 12px; margin: 8px 0; }
+  #suggestions ul { margin: 4px 0 8px; padding-left: 18px; }
   .demo { border: 1px solid var(--warn); border-radius: 8px; padding: 10px 12px;
           margin: 8px 0 12px; }
 </style>
@@ -42,20 +70,25 @@
   {% if demo %}
   <p class="demo"><strong class="warn">Demo data.</strong> Everything here is fictional: the
     person (Alex Martin), the companies and their job postings, replayed from recordings in
-    <code>demo/</code>. Company and job links point to made-up <code>.example</code> addresses,
+    <code>demo_config/</code>. Company and job links point to made-up <code>.example</code> addresses,
     so they won't open. Run Mission-Aligned Careers on your own data to get real companies and roles.</p>
   {% endif %}
-  <p class="updated">
+  <p class="links"><a href="?tour=1" id="take-tour">Take the tour</a> · <a href="/setup" id="update-setup">Update setup</a></p>
+  <p class="updated muted small">
     {% if runs %}Last updated
       {% for pipeline, finished in runs %}<span>· {{ pipeline }} {{ finished }}</span> {% endfor %}
     {% else %}<span class="muted">No run yet.</span>{% endif %}
   </p>
   <p class="muted small">
     {{ counts.companies }} companies scored · {{ counts.roles }} open roles at followed companies
-    {% if not has_cv %}· no CV found ({{ cv_path }}): roles are not ranked by CV fit{% endif %}
+    {% if not has_cv %}· no CV found (add cv.pdf, cv.docx or cv.md to {{ cv_path.parent }}/): roles are not ranked by CV fit{% endif %}
   </p>
 
-  <h2>Companies</h2>
+  <h2 id="sec-companies">Companies</h2>
+  {% if counts.companies == 0 %}
+  <p class="empty-state">No companies yet. Add companies you know or lists to read
+    (<code>uv run radar setup</code>), then <code>uv run radar start</code>.</p>
+  {% endif %}
   {% for key, title, open in company_sections %}
   {% set rows = companies[key] %}
   <details id="companies-{{ key }}" {% if open %}open{% endif %}>
@@ -63,7 +96,7 @@
     {% if rows %}
     <div class="scroll"><table>
       <tr><th>#</th><th>Company</th><th>Overall</th><th>Impact · practical · career</th>
-          <th>Careers page</th><th>What it does</th><th>Why</th></tr>
+          <th>Careers page</th><th>What it does</th><th>Why</th>{% if not read_only %}<th>Move to</th>{% endif %}</tr>
       {% for c in rows %}
       <tr>
         <td class="num muted">{{ loop.index }}</td>
@@ -74,6 +107,11 @@
         <td class="{{ 'ok' if c.careers_page in ('linked', 'found by trying') else 'warn' if c.careers_page == 'missing' else 'muted' }}">{{ c.careers_page }}</td>
         <td>{{ c.description }}</td>
         <td class="small">{{ c.reason }}{% if c.flags %} <span class="warn">⚑ {{ c.flags|join(", ") }}</span>{% endif %}</td>
+        {% if not read_only %}
+        <td><select class="decide" data-company="{{ c.company_id }}" aria-label="Move {{ c.name }}">
+          {% for value, label in choices %}<option value="{{ value }}"{% if your_choice[c.company_id] == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select></td>
+        {% endif %}
       </tr>
       {% endfor %}
     </table></div>
@@ -81,18 +119,133 @@
   </details>
   {% endfor %}
 
+  {% if hand_checks or hidden_hand_checks %}
+  <h2>Check careers pages by hand</h2>
+  <details id="check-by-hand">
+    <summary>Careers pages to open yourself ({{ hand_checks|length }})</summary>
+    <p class="empty muted small">The tool can't read these for you (no careers page, LinkedIn,
+      a site that blocks tools…). Best score first.{% if not read_only %} <em>Checked</em> hides one
+      for {{ recheck_days }} days, <em>Ignore</em> for good.{% endif %}</p>
+    <div id="check-filters" class="filter-bar small">
+      <strong>Filter:</strong>
+      <details class="dd" data-dd="where"><summary data-label="Where">Where</summary><div class="panel">
+        {% for key, label in check_groups %}<label><input type="checkbox" name="where" value="{{ key }}"> {{ label }}</label>{% endfor %}
+      </div></details>
+      <details class="dd" data-dd="place"><summary data-label="Places">Places</summary><div class="panel">
+        {% for place, n in check_places %}<label><input type="checkbox" name="place" value="{{ place }}"> {{ place }} ({{ n }})</label>{% endfor %}
+      </div></details>
+      <button type="button" class="reset">Reset</button>
+    </div>
+    <div class="scroll"><table>
+      <tr><th>#</th><th>Company</th><th>Where</th><th>What it does</th><th>Overall</th><th>Status</th><th>Why</th>{% if not read_only %}<th></th>{% endif %}</tr>
+      {% for h in hand_checks + hidden_hand_checks %}
+      {% set cid = h.company.company_id %}
+      <tr class="hand{% if h.hidden_as %} hidden-check{% endif %}" data-where="{{ h.where_group }}" data-places='{{ h.places|tojson }}'{% if h.hidden_as %} hidden{% endif %}>
+        <td class="num muted">{% if not h.hidden_as %}{{ loop.index }}{% endif %}</td>
+        <td><a href="{{ h.url }}" target="_blank" rel="noopener">{{ h.company.name }}</a></td>
+        <td class="small">{{ h.where or "—" }}</td>
+        <td class="small">{{ h.description or "" }}</td>
+        <td class="num score">{% if h.overall is none %}<span class="muted">—</span>{% else %}{{ "%.2f"|format(h.overall) }}{% endif %}</td>
+        <td>{{ "followed" if h.followed else "worth a look" }}{% if h.hidden_as %}<br><span class="muted small">{{ h.hidden_as }} by you</span>{% endif %}</td>
+        <td class="small warn">{{ h.reason }}</td>
+        {% if not read_only %}
+        <td class="actions">
+          {% if h.hidden_as %}
+          <button class="act" data-url="/companies/{{ cid }}/careers-check" data-body='{"status": null}'>Undo</button>
+          {% else %}
+          <button class="act" data-url="/companies/{{ cid }}/careers-check" data-body='{"status": "checked"}' title="Hide for {{ recheck_days }} days">Checked</button>
+          <button class="act" data-url="/companies/{{ cid }}/careers-check" data-body='{"status": "ignored"}' title="Never show it here again">Ignore</button>
+          <button class="act" data-url="/companies/{{ cid }}/decision" data-body='{"decision": "reject"}' data-confirm="Reject {{ h.company.name }}? It moves to Rejected and its jobs stop being watched.">Reject company</button>
+          {% endif %}
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </table></div>
+    {% if hidden_hand_checks %}
+    <p class="empty muted small">{{ hidden_hand_checks|length }} hidden (checked or ignored) ·
+      <button class="more" id="show-hidden-checks">show them</button></p>
+    {% endif %}
+  </details>
+  {% endif %}
+
   <h2>Roles</h2>
+  {% if watched == 0 %}
+  <p class="empty-state">Roles appear for the companies you follow: follow one from its menu
+    in Companies, then run <code>uv run radar start</code> again.</p>
+  {% endif %}
+  {% if suggestions %}
+  <div id="suggestions" class="small">
+    <p>💡 <strong>Role families to add or exclude</strong>: many open roles at your companies are in
+      these families, which aren't yours. Add one with <code>uv run radar setup</code>, or exclude
+      it (<code>roles.excluded_families</code>).</p>
+    <ul>
+      {% for s in suggestions %}
+      <li><strong>{{ s.label }}</strong>: {{ s.roles }} open roles (e.g. {{ s.examples|join(", ") }}){% if s.fits_cv %} · <span class="ok">✓ {{ s.fits_cv }} {{ "fits" if s.fits_cv == 1 else "fit" }} your CV</span>{% endif %}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% macro role_data(r) -%}
+    data-filter data-company="{{ r.posting.company_id }}" data-name="{{ r.company_name }}" data-family="{{ r.decision.family or '' }}"
+    data-fit="{{ r.cv_fit.score if r.cv_fit and r.cv_fit.score is not none else '' }}"
+    data-overall="{{ r.company_overall if r.company_overall is not none else '' }}"
+    data-where="{{ where_group(r.posting) }}" data-places='{{ places(r.posting) }}'
+  {%- endmacro %}
+  <div id="role-filters" class="filter-bar small">
+    <strong>Filter roles:</strong>
+    <details class="dd" data-dd="where"><summary data-label="Where">Where</summary><div class="panel">
+      {% for key, label in filter_groups %}<label{% if key == "reach" %} title="The role's location names one of these places: your home town and also_accept_places in your criteria (commute times aren't computed yet)"{% endif %}><input type="checkbox" name="where" value="{{ key }}"> {{ label }}</label>{% endfor %}
+    </div></details>
+    <details class="dd" data-dd="place"><summary data-label="Places">Places</summary><div class="panel">
+      <input type="search" id="place-search" placeholder="Filter places…">
+      {% for place, n in filter_places %}<label><input type="checkbox" name="place" value="{{ place }}"> {{ place }} ({{ n }})</label>{% endfor %}
+    </div></details>
+    <details class="dd" data-dd="family"><summary data-label="Family">Family</summary><div class="panel">
+      {% for key, label, n in filter_families %}<label><input type="checkbox" name="family" value="{{ key }}"> {{ label }} ({{ n }})</label>{% endfor %}
+    </div></details>
+    <details class="dd" data-dd="fit"><summary data-label="CV fit">CV fit</summary><div class="panel">
+      <label>at least <select name="fit"><option value="">any</option>{% for v in ["3", "3.5", "4", "4.5"] %}<option value="{{ v }}">{{ v }}</option>{% endfor %}</select></label>
+      <label><input type="checkbox" name="keep-no-fit" checked> keep roles without a CV fit</label>
+    </div></details>
+    <details class="dd" data-dd="overall"><summary data-label="Company score">Company score</summary><div class="panel">
+      <label>at least <select name="overall"><option value="">any</option>{% for v in ["3.5", "4", "4.5"] %}<option value="{{ v }}">{{ v }}</option>{% endfor %}</select></label>
+    </div></details>
+    <button type="button" id="reset-filters">Reset</button>
+  </div>
+  </div>
+  <div id="sec-roles">
+  {% if saved_roles %}
+  <details id="roles-saved">
+    <summary>★ Saved roles ({{ saved_roles|length }})</summary>
+    <div class="scroll"><table>
+      <tr><th>Role</th><th>Company</th><th>Now</th><th>CV fit</th><th>Why</th>{% if not read_only %}<th></th>{% endif %}</tr>
+      {% for s in saved_roles %}
+      {% set r = s.item %}
+      <tr {{ role_data(r) }}>
+        <td><a href="{{ r.posting.url }}" target="_blank" rel="noopener">{{ r.posting.title }}</a></td>
+        <td>{{ r.company_name }}</td>
+        <td><span class="tag{% if s.status in ('closed', 'company not followed', 'rejected', 'ignored') %} warn{% endif %}">{{ s.status }}</span></td>
+        <td class="num small">{% if r.cv_fit and r.cv_fit.score is not none %}{{ "%.1f"|format(r.cv_fit.score) }}{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td class="small">{{ r.decision.reason }}</td>
+        {% if not read_only %}<td class="actions"><button class="act star" data-url="/roles/{{ r.posting.job_id }}/mark" data-body='{"saved": false}' title="Remove from saved">★</button></td>{% endif %}
+      </tr>
+      {% endfor %}
+    </table></div>
+  </details>
+  {% endif %}
   {% for key, title, open in role_sections %}
   {% set rows = roles[key] %}
   <details id="roles-{{ key }}" {% if open %}open{% endif %}>
-    <summary>{{ title }} ({{ rows|length }})</summary>
+    <summary>{{ title }} ({{ role_counts[key] }})</summary>
     {% if rows %}
     <div class="scroll"><table>
       <tr><th>#</th><th>Role</th><th>Company</th><th>Where</th><th>Family</th>
-          <th>CV fit</th><th>Why</th><th>First seen</th></tr>
-      {% for r in rows %}
-      <tr>
-        <td class="num muted">{{ loop.index }}</td>
+          <th>CV fit</th><th>Company score</th><th>Why</th><th>First seen</th>{% if not read_only %}<th></th>{% endif %}</tr>
+      {% for row in rows %}
+      {% set r = row.item %}
+      <tr class="role{% if row.extra %} extra{% endif %}" {{ role_data(r) }}{% if row.extra %} data-group="{{ key }}-{{ row.group }}" hidden{% endif %}>
+        <td class="num muted">{{ row.number or "" }}</td>
         <td><a href="{{ r.posting.url }}" target="_blank" rel="noopener">{{ r.posting.title }}</a></td>
         <td>{{ r.company_name }}</td>
         <td>{{ r.posting.location or "—" }}{% if r.posting.remote.value != "unknown" %} · {{ r.posting.remote.value }}{% endif %}</td>
@@ -105,15 +258,46 @@
             {% if r.cv_fit.missing %}<br><span class="warn">✗ {{ r.cv_fit.missing|join(", ") }}</span>{% endif %}
           {% endif %}
         </td>
+        <td class="num">{% if r.company_overall is not none %}{{ "%.2f"|format(r.company_overall) }}{% else %}<span class="muted">—</span>{% endif %}</td>
         <td class="small">{{ r.decision.reason }}</td>
         <td class="num small">{{ r.posting.first_seen_at.strftime("%Y-%m-%d") }}</td>
+        {% if not read_only %}
+        {% set is_saved = r.posting.job_id in saved_ids %}
+        <td class="actions">
+          <button class="act star" data-url="/roles/{{ r.posting.job_id }}/mark" data-body='{"saved": {{ "false" if is_saved else "true" }}}' title="{{ 'Remove from saved' if is_saved else 'Save this role' }}">{{ "★" if is_saved else "☆" }}</button>
+          <button class="act" data-url="/roles/{{ r.posting.job_id }}/mark" data-body='{"ignored": true}' title="Move to ignored roles">Ignore</button>
+        </td>
+        {% endif %}
       </tr>
+      {% if row.more %}
+      <tr class="more-row"><td></td><td colspan="9" class="small muted">
+        <button class="more" data-group="{{ key }}-{{ row.group }}" data-label="+ {{ row.more }} more at {{ r.company_name }}">+ {{ row.more }} more at {{ r.company_name }}</button>
+      </td></tr>
+      {% endif %}
       {% endfor %}
     </table></div>
     {% else %}<p class="empty muted">None right now.</p>{% endif %}
   </details>
   {% endfor %}
 
+  {% if ignored_roles %}
+  <details id="roles-ignored">
+    <summary>Ignored roles ({{ ignored_roles|length }})</summary>
+    <div class="scroll"><table>
+      <tr><th>Role</th><th>Company</th><th>Why it was listed</th>{% if not read_only %}<th></th>{% endif %}</tr>
+      {% for r in ignored_roles %}
+      <tr {{ role_data(r) }}>
+        <td><a href="{{ r.posting.url }}" target="_blank" rel="noopener">{{ r.posting.title }}</a></td>
+        <td>{{ r.company_name }}</td>
+        <td class="small">{{ r.decision.reason }}</td>
+        {% if not read_only %}<td class="actions"><button class="act" data-url="/roles/{{ r.posting.job_id }}/mark" data-body='{"ignored": false}'>Undo</button></td>{% endif %}
+      </tr>
+      {% endfor %}
+    </table></div>
+  </details>
+  {% endif %}
+
+  </div>
   {% if mentions %}
   <details id="roles-mentions">
     <summary>Mentioned on careers pages ({{ mentions|length }})</summary>
@@ -128,9 +312,10 @@
   </details>
   {% endif %}
 
+
   {% if pending %}
   <h2>Waiting for your input</h2>
-  <details id="pending" open>
+  <details id="pending">
     <summary>Companies the tool couldn't resolve ({{ pending|length }})</summary>
     <p class="empty muted small">Add the missing website in
       <code>config/companies_pending.csv</code>, then run <code>radar companies import</code>.</p>
@@ -147,5 +332,257 @@
   <p class="muted small">API: <a href="/docs">/docs</a> · data refreshes with each run
     (CLI, Dagster or <code>POST /runs/weekly_radar</code>).</p>
 </main>
+{% set tour_key = "radar.tour.seen." ~ ("demo" if demo else "yours") %}
+{% include "_tour.html" %}
+<script>
+
+  // Lists you open or close are remembered in this browser (every list starts collapsed).
+  // Storage can be blocked (private window): the page then simply starts collapsed.
+  const store = {
+    get(key) { try { return JSON.parse(localStorage.getItem(key) || "null"); } catch { return null; } },
+    set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} },
+  };
+  const opened = new Set(store.get("radar.open") || []);
+  document.querySelectorAll("details[id]").forEach((details) => {
+    if (opened.has(details.id)) details.open = true;
+    details.addEventListener("toggle", () => {
+      details.open ? opened.add(details.id) : opened.delete(details.id);
+      store.set("radar.open", [...opened]);
+    });
+  });
+
+  // Buttons that save one of your marks (role saved / ignored, careers page checked…, reject):
+  // POST their JSON body to their address, then reload the page.
+  document.querySelectorAll("button.act").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (button.dataset.confirm && !confirm(button.dataset.confirm)) return;
+      button.disabled = true;
+      const response = await fetch(button.dataset.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: button.dataset.body,
+      });
+      if (response.ok) { location.reload(); return; }
+      button.disabled = false;
+      alert(`Couldn't save this (${response.status}): ${await response.text()}`);
+    });
+  });
+
+  // Check by hand: show or hide the pages you checked or ignored.
+  const showHidden = document.getElementById("show-hidden-checks");
+  if (showHidden) {
+    showHidden.addEventListener("click", () => {
+      const rows = document.querySelectorAll("tr.hidden-check");
+      const show = rows.length > 0 && rows[0].hidden;
+      rows.forEach((row) => { row.hidden = !show; });
+      showHidden.textContent = show ? "hide them" : "show them";
+    });
+  }
+
+  // Filter dropdowns (roles, check by hand): one open at a time; a click outside closes it.
+  const allDropdowns = [...document.querySelectorAll(".filter-bar details.dd")];
+  allDropdowns.forEach((dd) => dd.addEventListener("toggle", () => {
+    if (dd.open) allDropdowns.forEach((other) => { if (other !== dd) other.open = false; });
+  }));
+  document.addEventListener("click", (event) => {
+    allDropdowns.forEach((dd) => { if (!dd.contains(event.target)) dd.open = false; });
+  });
+
+  // Check by hand: filter by where the company is (groups or places). Kept in this browser.
+  (() => {
+    const bar = document.getElementById("check-filters");
+    if (!bar) return;
+    const boxes = (name) => [...bar.querySelectorAll(`input[name="${name}"]`)];
+    const checked = (name) => boxes(name).filter((b) => b.checked).map((b) => b.value);
+    const summary = document.querySelector("#check-by-hand > summary");
+    const title = summary.textContent.replace(/\s*\(\d+\)\s*$/, "");
+    const apply = () => {
+      const f = { where: checked("where"), place: checked("place") };
+      store.set("radar.check-filters", f);
+      bar.querySelectorAll("details.dd").forEach((dd) => {
+        const n = f[dd.dataset.dd].length;
+        const label = dd.querySelector("summary");
+        label.textContent = n ? `${label.dataset.label} (${n})` : label.dataset.label;
+        dd.classList.toggle("on", n > 0);
+      });
+      const rows = [...document.querySelectorAll("#check-by-hand tr.hand:not(.hidden-check)")];
+      let shown = 0;
+      rows.forEach((row) => {
+        const places = JSON.parse(row.dataset.places || "[]");
+        const ok = (!f.where.length && !f.place.length)
+          || f.where.includes(row.dataset.where) || places.some((p) => f.place.includes(p));
+        row.hidden = !ok;
+        if (ok) row.cells[0].textContent = ++shown;
+      });
+      summary.textContent = shown === rows.length
+        ? `${title} (${rows.length})` : `${title} (${shown} of ${rows.length} shown)`;
+    };
+    const saved = store.get("radar.check-filters") || {};
+    for (const name of ["where", "place"]) {
+      boxes(name).forEach((b) => { b.checked = (saved[name] || []).includes(b.value); });
+    }
+    bar.addEventListener("change", apply);
+    bar.querySelector("button.reset").addEventListener("click", () => {
+      boxes("where").concat(boxes("place")).forEach((b) => { b.checked = false; });
+      apply();
+    });
+    apply();
+  })();
+
+  // Role filters: where (groups or places), family, CV fit, company score. Rows that don't
+  // match are hidden; in the main lists each company still shows at most {{ show_per_company }}
+  // matching roles, the rest behind "+ N more". Kept in this browser; Reset clears them.
+  const bar = document.getElementById("role-filters");
+  if (bar) {
+    const limit = {{ show_per_company }};
+    const boxes = (name) => [...bar.querySelectorAll(`input[name="${name}"]`)];
+    const fit = bar.querySelector('select[name="fit"]');
+    const overall = bar.querySelector('select[name="overall"]');
+    const keepNoFit = bar.querySelector('input[name="keep-no-fit"]');
+    const read = () => ({
+      where: boxes("where").filter((b) => b.checked).map((b) => b.value),
+      place: boxes("place").filter((b) => b.checked).map((b) => b.value),
+      family: boxes("family").filter((b) => b.checked).map((b) => b.value),
+      fit: fit.value, overall: overall.value, keepNoFit: keepNoFit.checked,
+    });
+    const write = (f) => {
+      for (const name of ["where", "place", "family"]) {
+        boxes(name).forEach((b) => { b.checked = (f[name] || []).includes(b.value); });
+      }
+      fit.value = f.fit || ""; overall.value = f.overall || "";
+      keepNoFit.checked = f.keepNoFit !== false;
+    };
+    const active = (f) => f.where.length || f.place.length || f.family.length || f.fit || f.overall;
+    const passes = (row, f) => {
+      const d = row.dataset;
+      if (f.where.length || f.place.length) {
+        const places = JSON.parse(d.places || "[]");
+        if (!f.where.includes(d.where) && !places.some((p) => f.place.includes(p))) return false;
+      }
+      if (f.family.length && !f.family.includes(d.family)) return false;
+      if (f.fit && (d.fit === "" ? !f.keepNoFit : Number(d.fit) < Number(f.fit))) return false;
+      if (f.overall && (d.overall === "" || Number(d.overall) < Number(f.overall))) return false;
+      return true;
+    };
+    const moreRow = (after, hidden) => {
+      const tr = document.createElement("tr");
+      tr.className = "js-more";
+      const td = document.createElement("td");
+      td.colSpan = after.cells.length;
+      td.className = "small muted";
+      const button = document.createElement("button");
+      const label = `+ ${hidden.length} more at ${after.dataset.name}`;
+      button.className = "more";
+      button.textContent = label;
+      button.addEventListener("click", () => {
+        const show = hidden[0].hidden;
+        hidden.forEach((row) => { row.hidden = !show; });
+        button.textContent = show ? "show fewer" : label;
+      });
+      td.appendChild(button);
+      tr.appendChild(td);
+      after.after(tr);
+    };
+    const dropdowns = [...bar.querySelectorAll("details.dd")];
+    const label = (f) => {  // "Family (2)", "CV fit (≥ 4)"; highlighted when it filters something
+      const chosen = {
+        where: f.where.length || "", place: f.place.length || "", family: f.family.length || "",
+        fit: f.fit ? `≥ ${f.fit}` : "", overall: f.overall ? `≥ ${f.overall}` : "",
+      };
+      dropdowns.forEach((dd) => {
+        const summary = dd.querySelector("summary");
+        const value = chosen[dd.dataset.dd];
+        summary.textContent = value ? `${summary.dataset.label} (${value})` : summary.dataset.label;
+        dd.classList.toggle("on", Boolean(value));
+      });
+    };
+    const apply = () => {
+      const f = read();
+      store.set("radar.filters", f);
+      label(f);
+      const on = active(f);
+      document.querySelectorAll("tr.js-more").forEach((row) => row.remove());
+      document.querySelectorAll("details[id^='roles-']").forEach((details) => {
+        const rows = [...details.querySelectorAll("tr[data-filter]")];
+        if (!rows.length) return;
+        const summary = details.querySelector("summary");
+        summary.dataset.title ??= summary.textContent;
+        const serverMore = details.querySelectorAll("tr.more-row");
+        let matched = 0;
+        if (!on) {
+          rows.forEach((row) => { row.hidden = row.classList.contains("extra"); });
+          serverMore.forEach((row) => { row.hidden = false; });
+          details.querySelectorAll("button.more[data-label]").forEach((b) => {
+            b.textContent = b.dataset.label;
+          });
+          summary.textContent = summary.dataset.title;
+        } else {
+          serverMore.forEach((row) => { row.hidden = true; });
+          const capped = rows[0].classList.contains("role") && limit > 0;
+          const seen = {}, last = {}, extra = {};
+          rows.forEach((row) => {
+            if (!passes(row, f)) { row.hidden = true; return; }
+            matched += 1;
+            const company = row.dataset.company;
+            seen[company] = (seen[company] || 0) + 1;
+            if (capped && seen[company] > limit) {
+              row.hidden = true;
+              (extra[company] ||= []).push(row);
+              return;
+            }
+            row.hidden = false;
+            last[company] = row;
+          });
+          Object.entries(extra).forEach(([company, hidden]) => moreRow(last[company], hidden));
+          const title = summary.dataset.title.replace(/\s*\(\d+\)\s*$/, "");
+          summary.textContent = `${title} (${matched} of ${rows.length} shown)`;
+        }
+        let n = 0;  // number the visible rows of the main lists
+        rows.forEach((row) => {
+          if (row.classList.contains("role") && !row.hidden) row.cells[0].textContent = ++n;
+        });
+      });
+    };
+    write(store.get("radar.filters") || {});
+    bar.addEventListener("change", apply);
+    document.getElementById("reset-filters").addEventListener("click", () => {
+      write({});
+      apply();
+    });
+    const search = document.getElementById("place-search");
+    search.addEventListener("input", () => {
+      const text = search.value.toLowerCase();
+      boxes("place").forEach((b) => {
+        b.parentElement.hidden = !b.value.toLowerCase().includes(text);
+      });
+    });
+    apply();
+  }
+
+  // Move a company: saved in config/decisions.csv and applied at once, then the page reloads.
+  document.querySelectorAll("select.decide").forEach((select) => {
+    select.addEventListener("change", async () => {
+      select.disabled = true;
+      const response = await fetch(`/companies/${select.dataset.company}/decision`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision: select.value }),
+      });
+      if (response.ok) { location.reload(); return; }
+      select.disabled = false;
+      alert(`Couldn't save this choice (${response.status}): ${await response.text()}`);
+    });
+  });
+
+  // "+ N more at Google": show or hide that company's other roles in this list.
+  document.querySelectorAll("button.more").forEach((button) => {
+    button.addEventListener("click", () => {
+      const rows = document.querySelectorAll(`tr.extra[data-group="${button.dataset.group}"]`);
+      const show = rows.length > 0 && rows[0].hidden;
+      rows.forEach((row) => { row.hidden = !show; });
+      button.textContent = show ? "show fewer" : button.dataset.label;
+    });
+  });
+</script>
 </body>
 </html>

@@ -6,15 +6,15 @@ from job_radar.boards.classify import BoardKind, BoardRef, classify_careers_url
 @pytest.mark.parametrize(
     ("url", "expected"),
     [
-        ("https://jobs.ashbyhq.com/trawa", BoardRef(BoardKind.ASHBY, "trawa")),
+        ("https://jobs.ashbyhq.com/snowflake", BoardRef(BoardKind.ASHBY, "snowflake")),
         (
-            "https://jobs.ashbyhq.com/granular-energy.com",
-            BoardRef(BoardKind.ASHBY, "granular-energy.com"),
+            "https://jobs.ashbyhq.com/acme.com",
+            BoardRef(BoardKind.ASHBY, "acme.com"),
         ),
         ("https://jobs.ashbyhq.com/notion/", BoardRef(BoardKind.ASHBY, "notion")),
         (
-            "https://www.welcometothejungle.com/fr/companies-v1/carbon4-finance/jobs",
-            BoardRef(BoardKind.WTTJ, "carbon4-finance"),
+            "https://www.welcometothejungle.com/fr/companies-v1/michelin/jobs",
+            BoardRef(BoardKind.WTTJ, "michelin"),
         ),
         (
             "https://www.welcometothejungle.com/en/companies/lgi-sustainable-innovation",
@@ -25,15 +25,21 @@ from job_radar.boards.classify import BoardKind, BoardRef, classify_careers_url
             BoardRef(BoardKind.MAKESENSE, "lemon-tri-1628"),
         ),
         (
-            "https://www.linkedin.com/company/airmo/",
-            BoardRef(BoardKind.LINKEDIN, "airmo"),
+            "https://www.linkedin.com/company/siemens/",
+            BoardRef(BoardKind.LINKEDIN, "siemens"),
         ),
         (
             "https://europeanclimatefoundation.occupop-careers.com/",
             BoardRef(BoardKind.OCCUPOP, "europeanclimatefoundation"),
         ),
-        ("https://up42gmbh.recruitee.com/", BoardRef(BoardKind.RECRUITEE, "up42gmbh")),
-        ("https://up42gmbh.recruitee.com/o/designer", BoardRef(BoardKind.RECRUITEE, "up42gmbh")),
+        (
+            "https://wannabeatonytoo.recruitee.com/",
+            BoardRef(BoardKind.RECRUITEE, "wannabeatonytoo"),
+        ),
+        (
+            "https://wannabeatonytoo.recruitee.com/o/designer",
+            BoardRef(BoardKind.RECRUITEE, "wannabeatonytoo"),
+        ),
         ("https://career.recruitee.com/api/c/1", BoardRef(BoardKind.PAGE, None)),
         ("https://boards.greenhouse.io/acme", BoardRef(BoardKind.GREENHOUSE, "acme")),
         ("https://job-boards.greenhouse.io/acme", BoardRef(BoardKind.GREENHOUSE, "acme")),
@@ -64,10 +70,10 @@ from job_radar.boards.classify import BoardKind, BoardRef, classify_careers_url
         ("https://jobs.lever.co/acme/", BoardRef(BoardKind.LEVER, "acme")),
         ("https://jobs.eu.lever.co/acme", BoardRef(BoardKind.LEVER, "acme")),
         (
-            "https://kanop.notion.site/Careers-kanop-c3b4",
+            "https://google.notion.site/Careers-google-c3b4",
             BoardRef(BoardKind.PAGE, None),
         ),
-        ("https://www.orbio.earth/careers", BoardRef(BoardKind.PAGE, None)),
+        ("https://www.metacareers.com/jobs", BoardRef(BoardKind.PAGE, None)),
         ("", BoardRef(BoardKind.NONE, None)),
         ("   ", BoardRef(BoardKind.NONE, None)),
     ],

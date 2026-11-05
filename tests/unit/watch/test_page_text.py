@@ -13,9 +13,10 @@ def html(body: str, head: str = "") -> str:
 
 
 def test_real_page_lines_are_clean_and_deduplicated() -> None:
-    snap = page_snapshot((PAGES / "norma.tech.html").read_text())
-    assert snap.lines[0] == "Norma | A New Energy Equation for Carbon Capture"
-    assert snap.lines.count("Full-time Mechanical Engineer") == 1
+    snap = page_snapshot((PAGES / "mozilla.org.html").read_text())
+    assert snap.lines[0] == "Mozilla Careers — All open positions at Mozilla"
+    assert "Staff Data Scientist, Ads" in snap.lines
+    assert snap.lines.count("Remote Germany") == 1  # 6 times on the page
     assert not any("function(" in line or "{" in line for line in snap.lines)
 
 
@@ -44,13 +45,13 @@ def test_hash_ignores_markup_changes() -> None:
 
 
 def test_javascript_only_page_is_not_readable() -> None:
-    assert not is_readable(page_snapshot((PAGES / "orbio.earth.html").read_text()))
+    assert not is_readable(page_snapshot((PAGES / "metacareers.com.html").read_text()))
 
 
 def test_job_board_page_is_readable() -> None:
-    snap = page_snapshot((PAGES / "cleantechopenfrance.com.html").read_text())
+    snap = page_snapshot((PAGES / "ikea.com.html").read_text())
     assert is_readable(snap)
-    assert "Stage 6 mois- Ingénieur(e) Test" in snap.lines
+    assert "Et si tu nous rejoignais en alternance ?" in snap.lines
 
 
 # --- changes ------------------------------------------------------------------------------

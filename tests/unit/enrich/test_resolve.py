@@ -30,11 +30,11 @@ def page(url: str, title: str, body: str = "") -> Response:
 @pytest.mark.parametrize(
     ("name", "url", "title", "ok"),
     [
-        ("Aerleum", "https://aerleum.com/", "Aerleum | CO2 to fuels", True),
-        ("Recupere Metals", "https://www.recupere-metals.com/", "Home", True),  # domain matches
-        ("Kanop", "https://www.kanop.io/", "AI & Satellite Intelligence", True),  # domain
-        ("Ace Energies", "https://ace-energie.fr/", "Poêles à bois | ACE Rennes", False),
-        ("Hummingbirds", "https://example-shop.com/", "Bird feeders", False),
+        ("Patagonia", "https://patagonia.com/", "Patagonia | CO2 to fuels", True),
+        ("Samsung", "https://www.samsung.com/", "Home", True),  # domain matches
+        ("Google", "https://www.google.com/", "AI & Satellite Intelligence", True),  # domain
+        ("Toyota", "https://toyot.fr/", "Pièces auto | Rennes", False),  # a near-namesake
+        ("Netflix", "https://example-shop.com/", "Bird feeders", False),
     ],
 )
 def test_verify_website(name: str, url: str, title: str, ok: bool) -> None:
@@ -56,20 +56,20 @@ def test_verify_website_reports_fetch_problems() -> None:
 def test_guess_websites_returns_matching_sites_only() -> None:
     http = FakeHttpClient(
         {
-            "https://oris.com": page("https://oris.com", "Oris – Swiss watches"),
-            "https://oris.fr": page("https://oris.fr", "Domaine à vendre"),
-            "https://oris.io": FetchError("https://oris.io", "no such host"),
+            "https://nike.com": page("https://nike.com", "Nike – Swiss watches"),
+            "https://nike.fr": page("https://nike.fr", "Domaine à vendre"),
+            "https://nike.io": FetchError("https://nike.io", "no such host"),
         }
     )
-    suggestions = guess_websites("Oris", http)
-    assert [(s.url, s.title) for s in suggestions] == [("https://oris.com", "Oris – Swiss watches")]
-    assert "https://oris.earth" in http.requested  # every guess was tried
+    suggestions = guess_websites("Nike", http)
+    assert [(s.url, s.title) for s in suggestions] == [("https://nike.com", "Nike – Swiss watches")]
+    assert "https://nike.earth" in http.requested  # every guess was tried
 
 
 def test_guess_websites_tries_hyphenated_names() -> None:
-    url = "https://recupere-metals.com"
-    http = FakeHttpClient({url: page(url, "Recupere Metals")})
-    assert [s.url for s in guess_websites("Recupere Metals", http)] == [url]
+    url = "https://samsung.com"
+    http = FakeHttpClient({url: page(url, "Samsung")})
+    assert [s.url for s in guess_websites("Samsung", http)] == [url]
 
 
 # --- Claude Code ---------------------------------------------------------------------------
@@ -89,14 +89,16 @@ class Recorder:
 
 
 def test_claude_resolver_uses_web_search_and_returns_a_resolution() -> None:
-    run = Recorder({"website": "https://aerleum.com", "source_url": "https://x", "confidence": 0.9})
+    run = Recorder(
+        {"website": "https://patagonia.com", "source_url": "https://x", "confidence": 0.9}
+    )
     resolver = ClaudeCodeResolver(executable="/bin/claude", run=run)
-    resolution = resolver.resolve("Aerleum", "met at a climate event")
-    assert resolution == Resolution("https://aerleum.com", "https://x", 0.9)
+    resolution = resolver.resolve("Patagonia", "met at a climate event")
+    assert resolution == Resolution("https://patagonia.com", "https://x", 0.9)
     args, _, _ = run.calls[0]
     assert "WebSearch" in args[args.index("--allowedTools") + 1]
     assert (
-        "Aerleum" in args[args.index("-p") + 1]
+        "Patagonia" in args[args.index("-p") + 1]
         and "met at a climate event" in args[args.index("-p") + 1]
     )
 
@@ -110,15 +112,15 @@ def test_claude_name_extractor_reads_pasted_text_on_stdin() -> None:
     run = Recorder(
         {
             "companies": [
-                {"name": "Aerleum", "website": None, "context": "CO2 fuels"},
-                {"name": "Vema", "website": "https://www.vema.earth", "context": ""},
+                {"name": "Patagonia", "website": None, "context": "CO2 fuels"},
+                {"name": "Sony", "website": "https://www.sony.com", "context": ""},
             ]
         }
     )
     found = ClaudeCodeNameExtractor(executable="/bin/claude", run=run).extract("pasted text")
     assert found == [
-        Candidate("Aerleum", None, "CO2 fuels"),
-        Candidate("Vema", "https://www.vema.earth", ""),
+        Candidate("Patagonia", None, "CO2 fuels"),
+        Candidate("Sony", "https://www.sony.com", ""),
     ]
     _, stdin, _ = run.calls[0]
     assert stdin == "pasted text"
@@ -132,19 +134,19 @@ def test_claude_errors_raise() -> None:
 
 
 def test_fake_resolver() -> None:
-    fake = FakeResolver({"aerleum": "https://aerleum.com"})
-    assert fake.resolve("Aerleum", "").website == "https://aerleum.com"
+    fake = FakeResolver({"patagonia": "https://patagonia.com"})
+    assert fake.resolve("Patagonia", "").website == "https://patagonia.com"
     assert fake.resolve("Unknown", "").website is None
 
 
 def test_guesses_need_the_name_on_the_page_not_just_the_domain() -> None:
     http = FakeHttpClient(
         {
-            "https://oris.io": page("https://oris.io", ""),
-            "https://oris.eu": page("https://oris.eu", "Nameshift.com"),
+            "https://nike.io": page("https://nike.io", ""),
+            "https://nike.eu": page("https://nike.eu", "Nameshift.com"),
         }
     )
-    assert guess_websites("Oris", http) == []
+    assert guess_websites("Nike", http) == []
 
 
 @pytest.mark.parametrize(
@@ -153,12 +155,12 @@ def test_guesses_need_the_name_on_the_page_not_just_the_domain() -> None:
         (
             '<html><head><meta property="og:site_name" content="NOC Energy">'
             "<title>Reducing industrial energy costs.</title></head></html>",
-            "https://www.nocenergy.com",
+            "https://www.tesla.com",
             "NOC Energy",
         ),
         ("<title>HeatCo | Industrial heat</title>", "https://www.heatco.fr", "HeatCo"),
         ("<title>Industrial heat, simplified – HeatCo</title>", "https://heatco.fr", "HeatCo"),
-        ("<title>Reducing energy costs.</title>", "https://www.nocenergy.com", "Nocenergy"),
+        ("<title>Reducing energy costs.</title>", "https://www.tesla.com", "Tesla"),
     ],
 )
 def test_company_name_from_page(html: str, url: str, expected: str) -> None:

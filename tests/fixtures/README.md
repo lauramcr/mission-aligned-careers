@@ -13,3 +13,9 @@ is kept. The full originals are kept locally only, in `local/fixtures-original/`
 
 When you add a sample: record it, keep the original under `local/`, then trim and scrub the
 committed copy the same way and check it (`git grep` for names, emails, `linkedin.com/in/`).
+
+**Job boards and careers pages come from well-known companies**: Snowflake and OpenAI (Ashby),
+Tony's Chocolonely (Recruitee), Mozilla, IKEA France and Meta (careers pages), recorded in
+November 2026. Samples from companies on your own list can stay on your machine: name their
+tests `*_yours.py` (gitignored) and list the sample files in `.git/info/exclude`.
+

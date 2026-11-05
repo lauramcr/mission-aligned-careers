@@ -6,10 +6,9 @@
 .pytest_cache
 .mypy_cache
 .ruff_cache
+config/
 data/
 demo-run/
-config/*
-!config/*.example.yaml
 .env
 .env.*
 tests/

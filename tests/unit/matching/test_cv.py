@@ -16,7 +16,9 @@ T0 = datetime(2026, 10, 27, 9, 0, tzinfo=UTC)
 
 @pytest.fixture(scope="module")
 def taxonomy() -> Taxonomy:
-    return load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs").taxonomy
+    return load_profile(
+        REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs"
+    ).taxonomy
 
 
 def posting(title: str, description: str | None = None) -> JobPosting:

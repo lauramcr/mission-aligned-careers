@@ -4,7 +4,7 @@ Structural rules (types, ranges, unknown keys) live here. Cross-references betwe
 criteria and pack (e.g. "this theme exists") are checked in `loader.py`.
 """
 
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -39,6 +39,7 @@ class SectorDef(_Model):
 
     description: str
     keywords: list[str] = []
+    label: str = ""  # a readable name (your own sectors have one; the pack's use their key)
 
 
 DATA_CENTRALITY_LEVELS = ("core", "supporting", "minimal")
@@ -57,6 +58,7 @@ class SkillDef(_Model):
 
     label: str
     keywords: list[str] = Field(min_length=1)
+    generic: bool = False  # named by most jobs (stakeholders, Excel): no sign of a similar role
 
 
 class RoleFamilyDef(_Model):
@@ -64,6 +66,42 @@ class RoleFamilyDef(_Model):
 
     label: str
     title_keywords: list[str] = Field(min_length=1)
+
+
+class MyTerm(_Model):
+    """A theme or sector you added (config/my_vocabulary.yaml): its name and the words to look
+    for on a company's website."""
+
+    label: str = Field(min_length=1)
+    keywords: list[str] = Field(min_length=1)
+
+
+class MyRoleFamily(_Model):
+    """A kind of role you added: its name and the words to look for in job titles."""
+
+    label: str = Field(min_length=1)
+    title_keywords: list[str] = Field(min_length=1)
+
+
+class Vocabulary(_Model):
+    """Your own terms, merged with the pack's so the tool also works beyond the pack's field.
+    They are what to look for, not preferences: whether you want them is in your criteria."""
+
+    themes: dict[str, MyTerm] = {}
+    sectors: dict[str, MyTerm] = {}
+    role_families: dict[str, MyRoleFamily] = {}
+
+
+class PlaceDef(_Model):
+    """A place a website or a list can name (city, region or country), with its names in English
+    and French, matched as whole words; cities and regions say which country they are in."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
+
+    label: str
+    kind: Literal["city", "region", "country"]
+    keywords: list[str] = Field(min_length=1)
+    country: str | None = Field(default=None, alias="in")
 
 
 class Taxonomy(_Model):
@@ -81,6 +119,20 @@ class Taxonomy(_Model):
     skills: dict[str, SkillDef] = {}
     flags: dict[str, str]
     fact_keywords: FactKeywords = FactKeywords()
+    places: dict[str, PlaceDef] = {}  # where companies are, found in their text
+    vocabulary_hash: str = ""  # your own terms merged in (config/my_vocabulary.yaml), if any
+
+    @model_validator(mode="after")
+    def _places_in_known_countries(self) -> Self:
+        countries = {k for k, p in self.places.items() if p.kind == "country"}
+        problems = [
+            f"places.{key}: unknown country '{place.country}'"
+            for key, place in self.places.items()
+            if place.kind != "country" and place.country not in countries
+        ]
+        if problems:
+            raise ValueError("; ".join(problems))
+        return self
 
     @model_validator(mode="after")
     def _fact_keyword_ids(self) -> Self:
@@ -211,11 +263,13 @@ class Roles(_Model):
     """
 
     target_families: list[str] = Field(min_length=1)
+    excluded_families: list[str] = []  # pack families you never want: their roles are rejected
     preferred_context_keywords: list[str] = []
     languages: list[str] = []
     contracts: Contracts
     cold_application_signal: ColdApplicationSignal | None = None
     office_days: OfficeDaysScores
+    show_per_company: int = Field(default=5, ge=0)  # roles shown per company in a list; 0 = all
 
 
 class Weights(_Model):
@@ -269,6 +323,26 @@ class AutoFollow(_Model):
     min_confidence: float = Field(default=0.6, ge=0, le=1)
 
 
+class CheckByHand(_Model):
+    """Which worth-a-look companies join the "check careers pages by hand" list: those scoring
+    at least `min_overall` whose careers page couldn't be found or read. Followed companies
+    with an unreadable board are always listed.
+    """
+
+    min_overall: Score = 4.0
+    recheck_days: int = Field(default=30, ge=1)  # a page you checked comes back after this
+
+
+class OtherRoles(_Model):
+    """A role whose title matches none of your role families goes to "other roles at your
+    companies", unless your CV fits it at least `cv_fit_min` (0-5) on at least `min_skills` of
+    your skills that aren't generic (the pack marks stakeholders, Excel… as generic): then it goes
+    to review. One shared generic skill would otherwise make any job a perfect fit."""
+
+    cv_fit_min: Score = 3.5
+    min_skills: int = Field(default=3, ge=1)
+
+
 class Thresholds(_Model):
     """The cut-offs that turn scores into decisions (criteria: thresholds)."""
 
@@ -276,6 +350,8 @@ class Thresholds(_Model):
     open_application_candidate: OpenApplicationCandidate
     notify_job: NotifyJob
     auto_follow: AutoFollow = AutoFollow()
+    check_by_hand: CheckByHand = CheckByHand()
+    other_roles: OtherRoles = OtherRoles()
 
 
 class CalibrationCase(_Model):

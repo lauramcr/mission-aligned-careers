@@ -5,7 +5,14 @@ from typing import Any
 import pytest
 
 from job_radar.domain.models import ContractType, JobPosting, RemotePolicy
-from job_radar.matching.prefilter import family_of, normalize, prefilter, target_lines
+from job_radar.matching.prefilter import (
+    family_of,
+    location_group,
+    normalize,
+    pack_family_of,
+    prefilter,
+    target_lines,
+)
 from job_radar.profile.loader import load_profile
 from job_radar.profile.models import Profile
 
@@ -15,7 +22,7 @@ NOW = datetime(2026, 10, 12, tzinfo=UTC)
 
 @pytest.fixture(scope="module")
 def profile() -> Profile:
-    return load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs")
+    return load_profile(REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs")
 
 
 def job(title: str, **fields: Any) -> JobPosting:
@@ -133,3 +140,48 @@ def test_target_lines_only_flags_short_title_like_lines(profile: Profile) -> Non
         "Office Manager",
     )
     assert target_lines(lines, profile) == {"Data Analyst (Paris)": "data_analysis_bi"}
+
+
+@pytest.mark.parametrize(
+    ("title", "family"),
+    [  # titles from real boards
+        ("Head of Product", "product_management"),
+        ("Business Development Representative, DACH", "sales_business_development"),
+        ("Senior Accountant - Corporate Accounting", "finance_accounting"),
+        ("Payroll Analyst", "finance_accounting"),
+        ("Software Engineer, Mobile Core (Android)", "software_engineering"),
+        ("Outcomes Architect (Customer Success)", "customer_success_solutions"),
+        ("Mid-Market Solutions Consultant", "customer_success_solutions"),
+        ("GTM Recruiter, EMEA", "people_recruiting"),
+        ("(Senior) Associate – Energy Markets & Business Development", "energy_markets"),
+        ("Head of Sustainability", "sustainability_strategy"),
+        ("Brand Designer, Creative Studio", "design"),
+        ("Remote Sensing Scientist", "gis_remote_sensing"),
+        ("Chief of Staff", "operations"),
+        ("Engineering Manager, Mobile AI", "software_engineering"),
+        ("Head of Revenue Operations", "sales_business_development"),
+        ("Taxonomy Specialist", None),  # "tax lead" / "tax manager" only
+        ("Sales Data Analyst", "data_analysis_bi"),  # your families are checked first
+        ("Signal Processing Lead", None),  # no false match on a short keyword
+        ("Underwater basket weaver", None),
+    ],
+)
+def test_every_pack_family_is_recognised(profile: Profile, title: str, family: str | None) -> None:
+    assert pack_family_of(title, profile) == family
+
+
+@pytest.mark.parametrize(
+    ("location", "remote", "group"),
+    [
+        ("Paris, France", RemotePolicy.UNKNOWN, "reach"),
+        ("La Défense", RemotePolicy.HYBRID, "reach"),  # one of your also_accept_places
+        ("Europe", RemotePolicy.REMOTE, "remote"),  # remote in a region you accept
+        ("Berlin, Germany", RemotePolicy.REMOTE, "elsewhere"),  # remote, but based elsewhere
+        ("San Francisco, California; New York, New York", RemotePolicy.UNKNOWN, "elsewhere"),
+        (None, RemotePolicy.UNKNOWN, "unstated"),
+    ],
+)
+def test_location_group(
+    profile: Profile, location: str | None, remote: RemotePolicy, group: str
+) -> None:
+    assert location_group(job("Data Analyst", location=location, remote=remote), profile) == group

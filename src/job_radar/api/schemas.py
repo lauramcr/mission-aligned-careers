@@ -28,23 +28,28 @@ class CompanyOut(BaseModel):
 
 
 class DecisionIn(BaseModel):
-    """Your follow / reject decision for a company, with an optional note."""
+    """Your choice for a company: follow, review (worth a look), reject, or auto (remove your
+    choice, the rules decide), with an optional note."""
 
-    decision: Literal["follow", "reject"]
+    decision: Literal["follow", "review", "reject", "auto"]
     note: str = ""
 
 
 class DecisionOut(BaseModel):
-    """A recorded decision (applied on the next run)."""
+    """A recorded choice, applied at once: the company's list now, and why. `applies` is
+    "on the next run" for a company not scored yet."""
 
     company_id: str
     decision: str
-    applies: str = "on the next run"
+    outcome: str
+    reason: str
+    applies: str = "now"
 
 
 class RoleOut(BaseModel):
-    """An open role as the API returns it, with its list and CV fit."""
+    """An open role as the API returns it, with its list, CV fit and your marks."""
 
+    job_id: str
     company: str
     title: str
     url: str
@@ -58,6 +63,39 @@ class RoleOut(BaseModel):
     cv_fit: float | None = None  # 0-5; None: no CV, or the job names no known skill
     matched_skills: list[str] = []
     missing_skills: list[str] = []
+    saved: bool = False
+    ignored: bool = False
+    status: str | None = None  # saved roles: "to watch", "rejected", "closed"…
+
+
+class RoleMarkIn(BaseModel):
+    """Save or ignore a role (false undoes; a missing field is left as it is)."""
+
+    saved: bool | None = None
+    ignored: bool | None = None
+    note: str | None = None
+
+
+class RoleMarkOut(BaseModel):
+    """Your marks on a role after the change."""
+
+    job_id: str
+    saved: bool
+    ignored: bool
+
+
+class CareersCheckIn(BaseModel):
+    """You checked a careers page by hand (hidden for a while) or ignore it (for good);
+    null undoes."""
+
+    status: Literal["checked", "ignored"] | None
+
+
+class CareersCheckOut(BaseModel):
+    """A company's careers-page mark after the change."""
+
+    company_id: str
+    status: str | None
 
 
 class AddIn(BaseModel):

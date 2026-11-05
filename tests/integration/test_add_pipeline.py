@@ -34,8 +34,8 @@ def page(url: str, title: str, careers: str = "") -> Response:
 
 PAGES: dict[str, Response | Exception] = {
     "https://www.heatco.fr": page("https://www.heatco.fr", "HeatCo | Industrial heat", "/jobs"),
-    "https://aerleum.com": page("https://aerleum.com", "Aerleum – CO2 to fuels"),
-    "https://oris.com": page("https://oris.com", "Oris – Swiss watches"),
+    "https://patagonia.com": page("https://patagonia.com", "Patagonia – CO2 to fuels"),
+    "https://nike.com": page("https://nike.com", "Nike – Swiss watches"),
     "https://www.wrongsite.fr": page("https://www.wrongsite.fr", "Plumbing services"),
 }
 
@@ -56,7 +56,7 @@ def facts(theme: str) -> CompanyFacts:
 
 @pytest.fixture
 def profile() -> Profile:
-    return load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs")
+    return load_profile(REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs")
 
 
 @pytest.fixture
@@ -83,7 +83,7 @@ def add(
         "extractor": FakeExtractor(
             {
                 "heatco.fr": facts("energy_efficiency"),
-                "aerleum.com": facts("carbon_capture_removal"),
+                "patagonia.com": facts("carbon_capture_removal"),
             }
         ),
         "decisions": Decisions(),
@@ -109,11 +109,11 @@ def test_a_url_is_scored_by_default(setup: Any, profile: Profile) -> None:
 
 
 def test_watch_puts_it_on_your_own_list(setup: Any, profile: Profile) -> None:
-    resolver = FakeResolver({"Aerleum": "https://aerleum.com"})
+    resolver = FakeResolver({"Patagonia": "https://patagonia.com"})
     result = add(
         setup,
         profile,
-        [Candidate("Aerleum", None, "")],
+        [Candidate("Patagonia", None, "")],
         watch=True,
         resolver=resolver,
         note="met at ChangeNOW",
@@ -121,7 +121,7 @@ def test_watch_puts_it_on_your_own_list(setup: Any, profile: Profile) -> None:
     )
     rows = read_rows(setup[1])
     assert [(r["name"], r["website"], r["notes"], r["referral"]) for r in rows] == [
-        ("Aerleum", "https://aerleum.com", "met at ChangeNOW", "Sam")
+        ("Patagonia", "https://patagonia.com", "met at ChangeNOW", "Sam")
     ]
     [item] = result.discover.items
     assert item.known and item.outcome is Outcome.FOLLOW and item.reason == "on your own list"
@@ -130,39 +130,39 @@ def test_watch_puts_it_on_your_own_list(setup: Any, profile: Profile) -> None:
 def test_unknown_name_goes_to_pending_with_guessed_suggestions(
     setup: Any, profile: Profile
 ) -> None:
-    result = add(setup, profile, [Candidate("Oris", None, "LCA for infrastructure")])
+    result = add(setup, profile, [Candidate("Nike", None, "LCA for infrastructure")])
     assert result.discover.items == []
     [pending] = result.pending
-    assert pending[0] == "Oris"
-    assert "possible: https://oris.com (Oris – Swiss watches)" in pending[1]
+    assert pending[0] == "Nike"
+    assert "possible: https://nike.com (Nike – Swiss watches)" in pending[1]
     [row] = read_rows(setup[2])
     assert row["source"] == "added: by you" and "possible" in row["reason"]
 
 
 def test_a_website_that_does_not_match_goes_to_pending(setup: Any, profile: Profile) -> None:
-    resolver = FakeResolver({"Kanop": "https://www.wrongsite.fr"})
-    result = add(setup, profile, [Candidate("Kanop", None, "")], resolver=resolver)
+    resolver = FakeResolver({"Google": "https://www.wrongsite.fr"})
+    result = add(setup, profile, [Candidate("Google", None, "")], resolver=resolver)
     assert result.discover.items == []
-    assert "doesn't look like Kanop" in result.pending[0][1]
+    assert "doesn't look like Google" in result.pending[0][1]
 
 
 def test_names_are_resolved_and_context_reaches_the_extractor(setup: Any, profile: Profile) -> None:
-    extractor = FakeExtractor({"aerleum.com": facts("carbon_capture_removal")})
-    resolver = FakeResolver({"Aerleum": "https://aerleum.com"})
+    extractor = FakeExtractor({"patagonia.com": facts("carbon_capture_removal")})
+    resolver = FakeResolver({"Patagonia": "https://patagonia.com"})
     add(
         setup,
         profile,
-        [Candidate("Aerleum", None, "Followed On: Mon Mar 03 2025")],
+        [Candidate("Patagonia", None, "Followed On: Mon Mar 03 2025")],
         resolver=resolver,
         extractor=extractor,
         label="LinkedIn follows",
     )
-    assert resolver.calls == ["Aerleum"]
-    assert "Followed On: Mon Mar 03 2025" in extractor.texts["aerleum.com"]
+    assert resolver.calls == ["Patagonia"]
+    assert "Followed On: Mon Mar 03 2025" in extractor.texts["patagonia.com"]
 
 
 def test_tagline_titles_do_not_become_names(setup: Any, profile: Profile) -> None:
-    url = "https://www.nocenergy.com"
+    url = "https://www.tesla.com"
     html = (
         '<html><head><meta property="og:site_name" content="NOC Energy">'
         "<title>Reducing industrial energy costs while cutting emissions.</title></head></html>"

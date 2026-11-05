@@ -24,7 +24,9 @@ REPO = Path(__file__).resolve().parents[3]
 
 @pytest.fixture(scope="module")
 def taxonomy() -> Taxonomy:
-    profile: Profile = load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs")
+    profile: Profile = load_profile(
+        REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs"
+    )
     return profile.taxonomy
 
 

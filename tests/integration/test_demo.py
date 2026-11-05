@@ -1,5 +1,5 @@
 """The offline demo (`radar demo`) on the committed demo kit: deterministic, no network, no
-account. Each fictional company is there to show one behaviour (see demo/README.md)."""
+account. Each fictional company is there to show one behaviour (see demo_config/README.md)."""
 
 from datetime import UTC, datetime
 from pathlib import Path
@@ -8,10 +8,11 @@ import pytest
 
 from job_radar.matching.roles import RoleOutcome
 from job_radar.pipeline.demo import DemoResult, replay_routes, run_demo
+from job_radar.profile.loader import load_profile
 from job_radar.scoring.decide import Outcome
 
 REPO = Path(__file__).resolve().parents[2]
-DEMO = REPO / "demo"
+DEMO = REPO / "demo_config"
 T0 = datetime(2026, 10, 26, 9, 0, tzinfo=UTC)
 
 
@@ -75,6 +76,7 @@ def test_roles_to_watch_review_and_check_by_hand(demo: DemoResult) -> None:
     watch = {(r.company_name, r.posting.title) for r in demo.roles.by_outcome(RoleOutcome.WATCH)}
     assert watch == {
         ("Voltaïa", "Senior Data Analyst"),
+        ("Voltaïa", "Backend Engineer"),  # software engineering: one of Alex's kinds of roles
         ("Boucle", "Analytics Engineer"),
         ("Canopée Data", "Data Scientist – Forest Carbon"),
     }
@@ -82,7 +84,7 @@ def test_roles_to_watch_review_and_check_by_hand(demo: DemoResult) -> None:
     assert ("HeatLoop", "Data Analyst – Energy Projects (m/f/d)") in review
     mentions = {m.company_name for m in demo.roles.page_mentions}
     assert {"Mareo", "Terroir+"} <= mentions
-    by_hand = {m.company_name: m.reason for m in demo.roles.unreadable}
+    by_hand = {c.company.name: c.reason for c in demo.roles.hand_checks}
     assert "EU region" in by_hand["Recharge Commune"]
 
 
@@ -115,8 +117,9 @@ def test_refuses_to_wipe_a_folder_that_is_not_a_demo_workspace(tmp_path: Path) -
 
 def test_roles_are_ranked_by_how_well_alexs_cv_fits(demo: DemoResult) -> None:
     watch = demo.roles.ranked(RoleOutcome.WATCH)
-    assert [r.company_name for r in watch] == ["Voltaïa", "Canopée Data", "Boucle"]
-    voltaia, canopee, boucle = (r.cv_fit for r in watch)
+    assert [r.company_name for r in watch] == ["Voltaïa", "Canopée Data", "Voltaïa", "Boucle"]
+    voltaia, canopee, backend, boucle = (r.cv_fit for r in watch)
+    assert backend is not None and backend.missing == ["Cloud (AWS, GCP, Azure)", "Docker"]
     assert voltaia is not None and voltaia.score == pytest.approx(4.29)
     assert voltaia.missing == ["Stakeholder management"]
     assert canopee is not None and canopee.missing == ["GIS", "Remote sensing", "Statistics"]
@@ -130,3 +133,73 @@ def test_demo_reports_say_the_data_is_fictional(demo: DemoResult) -> None:
     for path in demo.reports:
         top = "\n".join(path.read_text().splitlines()[:4])  # right under the title
         assert "fictional demo data" in top
+
+
+def test_radar_demo_opens_alexs_setup_then_runs_from_the_page(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from typer.testing import CliRunner
+
+    from job_radar.api.setup_routes import local_run_job
+    from job_radar.cli import app
+    from job_radar.storage.duckdb_repository import DuckDBRepository
+
+    monkeypatch.chdir(REPO)  # the kit and packs are read from the project folder
+    served: list[tuple[object, str]] = []
+    monkeypatch.setattr(
+        "job_radar.cli._serve",
+        lambda port, browser, settings, tour=False, path="/": served.append((settings, path)),
+    )
+    workspace = tmp_path / "demo-run"
+
+    result = CliRunner().invoke(app, ["demo", "--workspace", str(workspace), "--no-browser"])
+
+    assert result.exit_code == 0, result.output
+    assert result.output.startswith("Mission-Aligned Careers demo")
+    assert "Run the demo" in result.output
+    [(settings, path)] = served
+    assert path == "/setup"  # Alex's setup first
+    assert settings.demo and settings.setup_read_only  # type: ignore[attr-defined]
+    assert settings.db == workspace / "data" / "radar.duckdb"  # type: ignore[attr-defined]
+    assert (workspace / "config" / "criteria.yaml").is_file()
+    assert (workspace / "paste.txt").is_file()  # the notes stay out of config/ (not a CV)
+    assert not (workspace / "config" / "paste.txt").exists()
+    assert not settings.db.exists()  # type: ignore[attr-defined]  # nothing run yet
+
+    summary = local_run_job(settings)()  # type: ignore[arg-type]  # "Run the demo" on the page
+    assert "companies scored" in summary
+    assert DuckDBRepository(workspace / "data" / "radar.duckdb").assessments()
+
+    quiet = CliRunner().invoke(app, ["demo", "--workspace", str(workspace), "--no-serve"])
+    assert quiet.exit_code == 0 and len(served) == 1  # --no-serve: runs now (CI, Docker)
+    for step in ("▸ Your notes", "▸ Lists", "▸ Companies", "▸ Job boards", "▸ Reports"):
+        assert step in quiet.output  # the same steps as radar start
+    assert "companies scored:" in quiet.output
+
+
+def test_alexs_setup_is_short_and_has_two_companies_waiting(tmp_path: Path) -> None:
+    from job_radar.pipeline.demo import prepare_demo
+
+    paths = prepare_demo(DEMO, tmp_path / "demo-run", REPO / "packs")
+    profile = load_profile(paths.criteria, paths.packs)
+    tiers = profile.criteria.impact.tiers
+    assert len(tiers["A"].themes) == 5 and len(tiers["B"].themes) == 5
+    assert "deep_tech" in tiers["B"].themes  # Alex's own term (demo_config/my_vocabulary.yaml)
+    assert profile.taxonomy.themes["deep_tech"].label == "Deep tech"
+    assert profile.criteria.impact.exclude_core_sectors == [
+        "oil_and_gas",
+        "fossil_hydrogen",
+        "defence",
+    ]
+    assert profile.criteria.roles.target_families[:2] == [
+        "software_engineering",
+        "data_engineering",
+    ]
+    from job_radar.sources.csv_source import read_rows
+
+    pending = [r["name"] for r in read_rows(paths.pending)]
+    assert pending == ["Fermes Solaires du Sud", "Atelier Cargo Vélo"]  # before any run
+
+
+def test_the_two_waiting_companies_reach_the_dashboard(demo: DemoResult) -> None:
+    assert {p.name for p in demo.roles.pending} >= {"Fermes Solaires du Sud", "Atelier Cargo Vélo"}

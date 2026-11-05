@@ -13,9 +13,10 @@ from job_radar.sources.list_page import (
     ListResult,
     ListSource,
     _domain,
+    fetch_text,
     register_list_reader,
 )
-from job_radar.web.http import FetchError, HttpClient, RobotsDisallowedError
+from job_radar.web.http import HttpClient
 
 MAX_DESCRIPTION = 500
 
@@ -41,19 +42,11 @@ def _description(company: dict[str, Any]) -> str:
 def read_norrsken(source: ListSource, http: HttpClient) -> ListResult:
     """Read Norrsken's Impact/100 data (all years) as listed companies with their descriptions."""
     result = ListResult()
-    try:
-        response = http.get(source.url)
-    except RobotsDisallowedError:
-        result.error = "the site's robots.txt asks tools not to read it"
-        return result
-    except FetchError as exc:
-        result.error = exc.reason
-        return result
-    if response.status_code != 200:
-        result.error = f"HTTP {response.status_code}"
+    text = fetch_text(http, source.url, result)
+    if text is None:
         return result
     try:
-        companies = json.loads(response.text)["companies"]
+        companies = json.loads(text)["companies"]
     except (ValueError, KeyError, TypeError):
         result.error = "the response is not the expected JSON (no 'companies' list)"
         return result
@@ -64,11 +57,17 @@ def read_norrsken(source: ListSource, http: HttpClient) -> ListResult:
         website = clean_url(str(company.get("website") or "")) or None
         if website and "://" not in website:
             website = f"https://{website}"
-        listed = ListedCompany(name, website, source.name, source.url, _description(company))
+        geography = company.get("geography") or []
+        country = str(geography[0]).strip() if geography else None
+        listed = ListedCompany(
+            name, website, source.name, source.url, _description(company), country or None
+        )
         if website and _domain(website):
             result.companies.append(listed)
         else:
             result.unresolved.append(
-                ListedCompany(name, None, source.name, source.url, listed.description)
+                ListedCompany(
+                    name, None, source.name, source.url, listed.description, listed.country
+                )
             )
     return result

@@ -15,7 +15,7 @@ REPO = Path(__file__).resolve().parents[3]
 
 @pytest.fixture(scope="module")
 def profile() -> Profile:
-    return load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs")
+    return load_profile(REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs")
 
 
 def facts(**fields: Any) -> CompanyFacts:

@@ -1,0 +1,86 @@
+{#- The onboarding tour, shared by the dashboard and the setup page. Needs `tour` (the steps:
+    title, text with *italics*, target id or "first-role-actions", list to open) and
+    `tour_key` (where "seen" is remembered in this browser). A link #take-tour replays it. -#}
+<style>
+  #tour { position: fixed; right: 16px; bottom: 16px; z-index: 50; max-width: 380px;
+          background: var(--card); color: var(--fg); border: 2px solid var(--accent);
+          border-radius: 10px; padding: 12px 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, .2); }
+  #tour h3 { margin: 0 0 6px; font-size: 16px; }
+  #tour p { margin: 4px 0; }
+  #tour .tour-buttons { display: flex; justify-content: space-between; margin-top: 10px; }
+  #tour button { font: inherit; padding: 4px 10px; cursor: pointer; border-radius: 6px;
+                 border: 1px solid var(--line); background: var(--card); color: var(--fg); }
+  #tour #tour-next { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .tour-target { outline: 3px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+  @media (max-width: 600px) { #tour { left: 8px; right: 8px; bottom: 8px; max-width: none; } }
+</style>
+<div id="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title" hidden>
+  <p class="muted small" id="tour-count"></p>
+  <h3 id="tour-title"></h3>
+  <p id="tour-text"></p>
+  <div class="tour-buttons">
+    <button type="button" id="tour-skip">Skip</button>
+    <span><button type="button" id="tour-back">Back</button>
+    <button type="button" id="tour-next">Next</button></span>
+  </div>
+</div>
+<script type="application/json" id="tour-steps">{{ tour|tojson }}</script>
+<script>
+  // The onboarding tour: on the first visit in this browser, with ?tour=1 (`radar start
+  // --tour`), or from "Take the tour". Each step opens and points at its section.
+  (() => {
+    const steps = JSON.parse(document.getElementById("tour-steps").textContent || "[]");
+    const box = document.getElementById("tour");
+    if (!steps.length || !box) return;
+    const key = "{{ tour_key }}";  // per page, demo and your data apart
+    const seen = () => { try { return localStorage.getItem(key) === "1"; } catch { return false; } };
+    const done = () => { try { localStorage.setItem(key, "1"); } catch {} };
+    let at = 0;
+    const clear = () => document.querySelectorAll(".tour-target").forEach((e) => e.classList.remove("tour-target"));
+    const show = () => {
+      const step = steps[at];
+      clear();
+      document.getElementById("tour-count").textContent = `Step ${at + 1} of ${steps.length}`;
+      document.getElementById("tour-title").textContent = step.title;
+      // *words* in a step are shown in italics (the text is escaped first)
+      const escaped = step.text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+      document.getElementById("tour-text").innerHTML = escaped.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+      document.getElementById("tour-back").hidden = at === 0;
+      document.getElementById("tour-next").textContent = at === steps.length - 1 ? "Done" : "Next";
+      if (step.open) { const d = document.getElementById(step.open); if (d) d.open = true; }
+      // "first-role-actions": the ☆ / Ignore buttons of the first role shown
+      const target = step.target === "first-role-actions"
+        ? [...document.querySelectorAll("#sec-roles tr.role")].find((r) => !r.hidden && r.closest("details").open)?.querySelector("td.actions")
+        : step.target && document.getElementById(step.target);
+      if (target) {
+        target.classList.add("tour-target");
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      box.hidden = false;
+      document.getElementById("tour-next").focus();
+    };
+    const close = () => { box.hidden = true; clear(); done(); };
+    document.getElementById("tour-next").addEventListener("click", () => {
+      if (at < steps.length - 1) { at += 1; show(); } else { close(); }
+    });
+    document.getElementById("tour-back").addEventListener("click", () => { at = Math.max(0, at - 1); show(); });
+    document.getElementById("tour-skip").addEventListener("click", close);
+    box.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") close();
+      if (event.key === "Tab") {  // keep the keyboard inside the tour
+        const buttons = [...box.querySelectorAll("button:not([hidden])")];
+        const i = buttons.indexOf(document.activeElement);
+        const next = event.shiftKey ? (i <= 0 ? buttons.length - 1 : i - 1) : (i + 1) % buttons.length;
+        buttons[next].focus();
+        event.preventDefault();
+      }
+    });
+    document.getElementById("take-tour").addEventListener("click", (event) => {
+      event.preventDefault(); at = 0; show();
+    });
+    const forced = new URLSearchParams(location.search).has("tour");
+    if (forced || !seen()) show();
+  })();
+</script>

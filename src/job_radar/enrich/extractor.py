@@ -277,8 +277,10 @@ class ClaudeCodeExtractor:
 
     @property
     def version(self) -> str:
-        """The prompt version, so a new prompt re-extracts facts."""
-        return f"{PROMPT_VERSION}+claude_code+{self._model}"
+        """The prompt version (and your vocabulary's fingerprint), so a new prompt or new terms
+        re-extract facts."""
+        mine = self._taxonomy.vocabulary_hash
+        return f"{PROMPT_VERSION}+claude_code+{self._model}" + (f"+{mine}" if mine else "")
 
     def extract(self, *, name: str, website: str, text: str) -> CompanyFacts:
         """Ask Claude for one company's facts and validate them against the pack."""

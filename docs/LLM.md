@@ -18,12 +18,12 @@ CV fit (ranking roles against your CV) is plain code too: your CV stays on your 
 
 | Route | Status | Notes |
 |---|---|---|
-| **Claude Code** (`claude -p`, your Claude subscription) | ✅ implemented | all three steps; see [USING_WITH_CLAUDE.md](USING_WITH_CLAUDE.md) |
+| **Claude Code** (`claude -p`, your Claude subscription) | ✅ implemented | all three steps; tested with recorded answers, not yet on real data |
 | **Keywords** (no model) | ✅ implemented | facts only; the fallback when no model is available |
 | **Replay** (recorded answers) | ✅ implemented | used by the offline demo and tests |
 | Local models (e.g. Ollama), other providers' APIs | not yet — follow the recipe below | |
 
-`uv run radar doctor` shows which route is active.
+`uv run radar` shows which route is active.
 
 ## Plugging in another model
 
@@ -88,7 +88,7 @@ the name appears on it, it isn't a parked domain).
 
 ### 4. Select it
 
-- Facts: `enrich/select.py` → `select_extractor()` picks the extractor for `radar discover`,
+- Facts: `enrich/select.py` → `select_extractor()` picks the extractor for `radar start`,
   Dagster and the API. Add your route there (e.g. from a setting or an environment variable).
 - Names and websites: `radar add` builds them in `cli.py` (`add_command`).
 - Credentials (API keys) come **only from environment variables**, never from files in the

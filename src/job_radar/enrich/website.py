@@ -74,13 +74,13 @@ def find_about_url(html: str, page_url: str) -> str | None:
 
 def find_careers_url(html: str, page_url: str) -> str | None:
     """The best careers link on a page: a readable job board first, then a careers page on the
-    site, then one hosted elsewhere (e.g. Notion), LinkedIn last.
+    site, then one hosted elsewhere (e.g. a Notion page), LinkedIn last.
     """
     anchors = _anchors(html, page_url)
     for url, _ in anchors:  # an ATS feed beats any page
         if classify_careers_url(url).kind.has_feed:
             return url
-    elsewhere: str | None = None  # careers wording, hosted on another site (e.g. Notion)
+    elsewhere: str | None = None  # careers wording, hosted on another site (e.g. a Notion page)
     linkedin: str | None = None  # last resort: LinkedIn jobs or a "we're hiring" post
     for url, label in anchors:
         kind = classify_careers_url(url).kind

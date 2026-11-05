@@ -18,7 +18,7 @@ from dagster import (
 from job_radar.orchestration.assets import WEEKLY_ASSETS, careers_pages
 from job_radar.orchestration.checks import CHECKS
 from job_radar.orchestration.resources import RadarResource
-from job_radar.settings import RadarPaths
+from job_radar.settings import RadarPaths, use_llm_from_env
 
 weekly_radar = define_asset_job(
     "weekly_radar",
@@ -45,6 +45,10 @@ defs = Definitions(
     jobs=[weekly_radar, find_careers],
     schedules=[weekly_radar_schedule],
     # File locations from JOB_RADAR_* environment variables (defaults: config/, data/).
-    resources={"radar": RadarResource.from_paths(RadarPaths.from_env(os.environ))},
+    resources={
+        "radar": RadarResource.from_paths(
+            RadarPaths.from_env(os.environ), use_llm=use_llm_from_env(os.environ)
+        )
+    },
     executor=in_process_executor,
 )

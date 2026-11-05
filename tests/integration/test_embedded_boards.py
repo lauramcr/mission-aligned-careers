@@ -23,7 +23,7 @@ ALTRUISTIQ_FEED = "https://boards-api.greenhouse.io/v1/boards/altruistiq/jobs?co
 
 @pytest.fixture
 def profile() -> Profile:
-    return load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs")
+    return load_profile(REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs")
 
 
 @pytest.fixture

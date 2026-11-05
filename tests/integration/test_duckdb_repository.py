@@ -110,9 +110,9 @@ def test_replace_pending(repo: DuckDBRepository) -> None:
     def pending(name: str) -> PendingCompany:
         return PendingCompany(name, "", "", "", "", "no website", date(2026, 10, 1))
 
-    repo.replace_pending([pending("Oris"), pending("Hummingbirds")])
-    repo.replace_pending([pending("Oris")])
-    assert [p.name for p in repo.pending()] == ["Oris"]
+    repo.replace_pending([pending("Nike"), pending("Netflix")])
+    repo.replace_pending([pending("Nike")])
+    assert [p.name for p in repo.pending()] == ["Nike"]
 
 
 # --- boards -----------------------------------------------------------------------------------
@@ -219,3 +219,26 @@ def test_pipeline_runs(repo: DuckDBRepository) -> None:
     assert columns == ["pipeline", "status", "counts", "errors"]
     assert rows[0][0:2] == ("watch", "ok")
     assert '"boards": 3' in rows[0][2]
+
+
+def test_a_list_fills_the_country_but_never_overwrites_it(repo: DuckDBRepository) -> None:
+    def listed(country: str | None, source: str) -> CompanyEntry:
+        company = Company.from_website(name="Acme", website="https://acme.com", seen_at=T0)
+        company = company.model_copy(update={"country": country})
+        return CompanyEntry(company, None, None, None, source=source)
+
+    repo.upsert_companies([listed(None, "Fund A")], seen_at=T0)
+    repo.upsert_companies([listed("Spain", "Norrsken")], seen_at=T0)  # fills the gap
+    repo.upsert_companies([listed("France", "Fund B")], seen_at=T0)  # never overwrites
+    repo.upsert_companies([entry(cid="acme.com")], seen_at=T0)  # your list, no country column
+    assert repo.companies()[0].company.country == "Spain"
+
+
+def test_always_follow_is_stored_with_your_list(repo: DuckDBRepository) -> None:
+    from dataclasses import replace
+
+    repo.upsert_companies([replace(entry(), always_follow=False)], seen_at=T0)
+    [stored] = repo.companies()
+    assert stored.known and not stored.always_follow
+    repo.upsert_companies([entry()], seen_at=T0)  # ticked again
+    assert repo.companies()[0].always_follow

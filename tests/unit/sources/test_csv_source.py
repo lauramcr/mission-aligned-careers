@@ -28,15 +28,15 @@ def row(name: str, website: str = "", careers_url: str = "", **extra: str) -> di
     ("raw", "expected"),
     [
         (
-            "https://jobs.ashbyhq.com/granular-energy.com?utm_source=jobs.360cap.vc",
-            "https://jobs.ashbyhq.com/granular-energy.com",
+            "https://jobs.ashbyhq.com/acme.com?utm_source=jobs.360cap.vc",
+            "https://jobs.ashbyhq.com/acme.com",
         ),
         (
             "https://jobs.ashbyhq.com/notion?locationId=50a9&source=LinkedIn",
             "https://jobs.ashbyhq.com/notion",
         ),
         ("https://acme.com/careers?team=data&utm_medium=x", "https://acme.com/careers?team=data"),
-        ("https://seaturns.com/en/about/#carreers", "https://seaturns.com/en/about/#carreers"),
+        ("https://danone.com/en/about/#carreers", "https://danone.com/en/about/#carreers"),
         ("  https://acme.com  ", "https://acme.com"),
         ("", ""),
     ],
@@ -95,13 +95,13 @@ def test_invalid_website_goes_to_pending() -> None:
 
 
 def test_row_without_name_uses_domain_as_name() -> None:
-    result = import_companies([row("", "https://www.ceezer.earth")], [], seen_at=NOW)
-    assert result.companies[0].company.name == "ceezer.earth"
+    result = import_companies([row("", "https://www.adidas.com")], [], seen_at=NOW)
+    assert result.companies[0].company.name == "adidas.com"
 
 
 def test_pending_row_is_promoted_once_website_is_added() -> None:
     pending_rows = [
-        row("Oris", "https://oris.example.com", reason="unknown", added_on="2026-10-01")
+        row("Nike", "https://nike.example.com", reason="unknown", added_on="2026-10-01")
     ]
     result = import_companies([], pending_rows, seen_at=NOW)
     assert [e.company.company_id for e in result.companies] == ["example.com"]
@@ -109,7 +109,7 @@ def test_pending_row_is_promoted_once_website_is_added() -> None:
 
 
 def test_pending_row_without_website_stays_pending_with_original_reason_and_date() -> None:
-    pending_rows = [row("Oris", "", reason="confirm the company", added_on="2026-10-01")]
+    pending_rows = [row("Nike", "", reason="confirm the company", added_on="2026-10-01")]
     result = import_companies([], pending_rows, seen_at=NOW)
     [pending] = result.pending
     assert pending.reason == "confirm the company"
@@ -143,36 +143,54 @@ def test_read_rows_and_write_pending_round_trip(tmp_path: Path) -> None:
 
 
 def test_promoted_pending_rows_are_reported_so_they_can_join_the_main_list() -> None:
-    pending_rows = [row("Oris", "https://oris.example.com", notes="LCA", reason="x", added_on="")]
+    pending_rows = [row("Nike", "https://nike.example.com", notes="LCA", reason="x", added_on="")]
     result = import_companies([row("Acme", "https://acme.com")], pending_rows, seen_at=NOW)
-    assert [e.company.name for e in result.promoted] == ["Oris"]
+    assert [e.company.name for e in result.promoted] == ["Nike"]
     assert result.promoted[0].notes == "LCA"
 
 
 def test_append_companies_adds_rows_to_the_main_csv(tmp_path: Path) -> None:
     main = tmp_path / "companies.csv"
     main.write_text("name,website,careers_url,notes,referral\nAcme,https://acme.com,,,\n")
-    pending_rows = [row("Oris", "https://oris.example.com", "https://oris.example.com/jobs")]
+    pending_rows = [row("Nike", "https://nike.example.com", "https://nike.example.com/jobs")]
     result = import_companies([], pending_rows, seen_at=NOW)
     append_companies(main, result.promoted)
     rows = read_rows(main)
-    assert [r["name"] for r in rows] == ["Acme", "Oris"]
-    assert rows[1]["careers_url"] == "https://oris.example.com/jobs"
+    assert [r["name"] for r in rows] == ["Acme", "Nike"]
+    assert rows[1]["careers_url"] == "https://nike.example.com/jobs"
 
 
 def test_pending_rows_keep_their_source_when_promoted() -> None:
     pending_rows = [
-        row("Oris", "https://oris.example.com", reason="x", added_on="", source="added: LinkedIn"),
+        row("Nike", "https://nike.example.com", reason="x", added_on="", source="added: LinkedIn"),
         row("Mine", "https://www.mine-company.fr", reason="x", added_on=""),
     ]
     result = import_companies([], pending_rows, seen_at=NOW)
     sources = {e.company.name: e.source for e in result.promoted}
-    assert sources == {"Oris": "added: LinkedIn", "Mine": USER_CSV_SOURCE}
+    assert sources == {"Nike": "added: LinkedIn", "Mine": USER_CSV_SOURCE}
 
 
 def test_pending_source_round_trips(tmp_path: Path) -> None:
-    pending = [PendingCompany("Oris", "", "", "", "", "no website", TODAY, source="added: x")]
+    pending = [PendingCompany("Nike", "", "", "", "", "no website", TODAY, source="added: x")]
     path = tmp_path / "pending.csv"
     write_pending(path, pending)
     [again] = import_companies([], read_rows(path), seen_at=NOW).pending
     assert again.source == "added: x"
+
+
+def test_always_follow_column(tmp_path: Path) -> None:
+    from datetime import UTC, datetime
+
+    from job_radar.sources.csv_source import import_companies
+
+    rows = [
+        {"name": "Kept", "website": "https://kept.example", "always_follow": ""},  # empty: yes
+        {"name": "Scored", "website": "https://scored.example", "always_follow": "no"},
+        {"name": "Old file", "website": "https://old.example"},  # no column at all: yes
+    ]
+    result = import_companies(rows, [], seen_at=datetime(2026, 11, 4, tzinfo=UTC))
+    assert {e.company.name: e.always_follow for e in result.companies} == {
+        "Kept": True,
+        "Scored": False,
+        "Old file": True,
+    }

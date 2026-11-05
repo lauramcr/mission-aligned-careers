@@ -62,7 +62,7 @@ class CallRecord:
 
 @dataclass(frozen=True)
 class UsageSummary:
-    """A run's model usage in totals, for reports and `radar doctor`."""
+    """A run's model usage in totals, for reports and the setup checklist."""
 
     calls: int
     failed: int

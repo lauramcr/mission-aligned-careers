@@ -21,7 +21,7 @@ uv run pytest
 
 step "Smoke test: the offline demo"
 workspace="$(mktemp -d)/demo-run"
-uv run radar demo --workspace "$workspace"
+uv run radar demo --no-serve --workspace "$workspace"
 
 step "Dagster definitions load"
 DAGSTER_HOME="$(mktemp -d)" uv run dagster definitions validate -m job_radar.orchestration.definitions

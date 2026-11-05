@@ -13,13 +13,13 @@ from job_radar.web.http import FakeHttpClient, Response
 
 REPO = Path(__file__).resolve().parents[2]
 T0 = datetime(2026, 10, 13, 8, 0, tzinfo=UTC)
-ASHBY = "https://api.ashbyhq.com/posting-api/job-board/trawa?includeCompensation=true"
-ORBIO = "https://www.orbio.earth/careers"
+ASHBY = "https://api.ashbyhq.com/posting-api/job-board/snowflake?includeCompensation=true"
+META = "https://www.metacareers.com/jobs"
 
 
 @pytest.fixture
 def profile() -> Profile:
-    return load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs")
+    return load_profile(REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs")
 
 
 @pytest.fixture
@@ -27,9 +27,9 @@ def repo(tmp_path: Path) -> DuckDBRepository:
     companies = tmp_path / "companies.csv"
     companies.write_text(
         "name,website,careers_url,notes,referral\n"
-        "trawa,https://www.trawa.de,https://jobs.ashbyhq.com/trawa,,\n"
-        f"Orbio Earth,https://www.orbio.earth,{ORBIO},,\n"
-        "AIRMO,https://www.airmo.io,https://www.linkedin.com/company/airmo/,,\n"
+        "Snowflake,https://www.snowflake.com,https://jobs.ashbyhq.com/snowflake,,\n"
+        f"Meta,https://www.meta.com,{META},,\n"
+        "Siemens,https://www.siemens.com,https://www.linkedin.com/company/siemens/,,\n"
     )
     repo = DuckDBRepository(":memory:")
     run_import(repo, companies_csv=companies, pending_csv=tmp_path / "p.csv", now=T0)
@@ -40,8 +40,10 @@ def live() -> FakeHttpClient:
     fixtures = REPO / "tests" / "fixtures"
     return FakeHttpClient(
         {
-            ASHBY: Response(ASHBY, 200, (fixtures / "boards/ashby/trawa.json").read_text()),
-            ORBIO: Response(ORBIO, 200, (fixtures / "pages/careers/orbio.earth.html").read_text()),
+            ASHBY: Response(ASHBY, 200, (fixtures / "boards/ashby/snowflake.json").read_text()),
+            META: Response(
+                META, 200, (fixtures / "pages/careers/metacareers.com.html").read_text()
+            ),
         }
     )
 
@@ -63,8 +65,8 @@ def test_rerun_within_a_week_fetches_nothing_and_keeps_reasons(
     assert offline.requested == []
     assert second.checked == 0 and second.skipped_fresh == 3
     assert reasons(second) == reasons(first)  # "couldn't check" list survives the re-run
-    assert "needs JavaScript" in reasons(second)["Orbio Earth"]
-    assert len(repo.postings(open_only=True)) == 19  # stored roles still there
+    assert "needs JavaScript" in reasons(second)["Meta"]
+    assert len(repo.postings(open_only=True)) == 20  # stored roles still there
 
 
 def test_force_and_expiry_refetch(repo: DuckDBRepository, profile: Profile) -> None:

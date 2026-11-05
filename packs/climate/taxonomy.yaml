@@ -172,7 +172,7 @@ business_models: [b2b_saas, b2c, marketplace, hardware, deep_tech, services, pub
 role_families:   # title keywords (EN/FR, lowercase) drive the code-only job prefilter
   data_engineering:
     label: Data engineering
-    title_keywords: ["data engineer", "ingénieur data", "ingénieur·e data", "ingénieur données", "data platform", "dataops"]
+    title_keywords: ["data engineer", "ingénieur data", "ingénieur·e data", "ingénieur données", "data platform", "dataops", "head of data", "data lead"]
   analytics_engineering:
     label: Analytics engineering
     title_keywords: ["analytics engineer"]
@@ -181,7 +181,7 @@ role_families:   # title keywords (EN/FR, lowercase) drive the code-only job pre
     title_keywords: ["data scientist", "machine learning", "ml engineer", "scientifique des données"]
   data_analysis_bi:
     label: Data analysis / BI
-    title_keywords: ["data analyst", "business intelligence", "bi analyst", "bi developer", "analyste données", "analyste data", "chargé d'études", "business analytics", "data analytics"]
+    title_keywords: ["data analyst", "business intelligence", "bi analyst", "bi developer", "analyste données", "analyste data", "chargé d'études", "business analytics", "data analytics", "business analyst", "analytics lead", "analytics manager", "sustainability analyst", "climate analyst", "carbon analyst"]
   investment_analysis:
     label: Investment analysis
     title_keywords: ["investment analyst", "investment associate", "analyste investissement", "chargé d'affaires", "venture analyst"]
@@ -190,7 +190,49 @@ role_families:   # title keywords (EN/FR, lowercase) drive the code-only job pre
     title_keywords: ["project manager", "chef de projet", "cheffe de projet", "chargé de projet", "chargée de projet", "program manager", "pmo"]
   product_operations:
     label: Product operations / data PM
-    title_keywords: ["product ops", "product operations", "data product manager", "product manager data"]
+    title_keywords: ["product ops", "product operations", "data product manager", "product manager data", "strategy & operations", "strategy and operations", "business operations", "bizops"]
+  # Other families: they label roles outside your targets ("other roles at your companies"),
+  # can be excluded (roles.excluded_families) and are suggested when many open roles match.
+  # Your target families are always checked first, then these in this order.
+  product_management:
+    label: Product management
+    title_keywords: ["product manager", "head of product", "product owner", "product lead", "vp product", "chef de produit", "cheffe de produit", "responsable produit"]
+  sustainability_strategy:
+    label: Sustainability / climate strategy
+    title_keywords: ["sustainability", "esg", "csr", "rse", "climate strategy", "impact manager", "net zero", "decarbonisation", "decarbonization", "chargé de mission climat", "chargée de mission climat", "développement durable"]
+  energy_markets:
+    label: Energy markets
+    title_keywords: ["energy analyst", "energy markets", "energy market", "energy trader", "power trading", "power markets", "ppa", "origination", "analyste énergie"]
+  gis_remote_sensing:
+    label: GIS / remote sensing
+    title_keywords: ["gis", "geospatial", "remote sensing", "earth observation", "télédétection", "géomaticien", "géomaticienne"]
+  research:
+    label: Research
+    title_keywords: ["research scientist", "research engineer", "researcher", "chercheur", "chercheuse", "postdoc"]
+  customer_success_solutions:
+    label: Customer success / solutions
+    title_keywords: ["customer success", "solutions consultant", "solutions engineer", "solutions architect", "outcomes architect", "implementation manager", "implementation consultant", "customer delivery", "onboarding", "technical support", "product support"]
+  design:
+    label: Design
+    title_keywords: ["designer", "ux", "user experience", "design lead", "head of design"]
+  sales_business_development:
+    label: Sales / business development
+    title_keywords: ["sales", "account executive", "business development", "business developer", "bdr", "sdr", "account manager", "partner manager", "ingénieur commercial", "ingénieure commerciale", "commercial", "key account", "revenue operations"]
+  marketing_communications:
+    label: Marketing / communications
+    title_keywords: ["marketing", "marketer", "campaign", "brand", "content", "communication", "demand generation", "community manager"]
+  people_recruiting:
+    label: People / recruiting
+    title_keywords: ["recruiter", "recruiting", "recruitment", "talent", "sourcer", "people partner", "people operations", "hr manager", "hr business partner", "head of hr", "ressources humaines", "chargé de recrutement", "chargée de recrutement"]
+  finance_accounting:
+    label: Finance / accounting
+    title_keywords: ["accountant", "accounting", "comptable", "controller", "contrôleur de gestion", "contrôleuse de gestion", "payroll", "fp&a", "treasury", "finance manager", "head of finance", "cfo", "strategic finance", "tax manager", "tax lead"]
+  software_engineering:
+    label: Software engineering
+    title_keywords: ["software engineer", "backend", "back end", "frontend", "front end", "full stack", "fullstack", "developer", "développeur", "développeuse", "devops", "sre", "site reliability", "security engineer", "forward deployed", "platform engineer", "mobile engineer", "ios engineer", "android engineer", "engineering manager"]
+  operations:
+    label: Operations
+    title_keywords: ["operations manager", "office manager", "chief of staff", "supply chain", "logistics", "logistique", "procurement", "achats"]
 
 flags:
   oil_gas_clients: "Counts oil & gas companies as clients. Acceptable only if the product has a genuine climate impact."
@@ -222,6 +264,8 @@ fact_keywords:
     public_agency: ["public agency", "government agency", "agence publique"]
 
 # Skills a CV or a job description can name, for CV fit (whole-word match, EN/FR).
+# generic: true = named by most jobs, so it never moves a role outside your families to review
+# (criteria thresholds.other_roles).
 skills:
   sql: {label: SQL, keywords: [sql, postgresql, postgres, mysql]}
   python: {label: Python, keywords: [python, pandas]}
@@ -233,11 +277,11 @@ skills:
   snowflake: {label: Snowflake, keywords: [snowflake]}
   cloud: {label: "Cloud (AWS, GCP, Azure)", keywords: [aws, gcp, azure, google cloud]}
   docker: {label: Docker, keywords: [docker, kubernetes]}
-  git: {label: Git, keywords: [git, github, gitlab]}
+  git: {label: Git, keywords: [git, github, gitlab], generic: true}
   power_bi: {label: Power BI, keywords: [power bi, powerbi, dax]}
   tableau: {label: Tableau, keywords: [tableau]}
   looker: {label: Looker, keywords: [looker, lookml]}
-  excel: {label: Excel, keywords: [excel]}
+  excel: {label: Excel, keywords: [excel], generic: true}
   statistics: {label: Statistics, keywords: [statistics, statistical, statistique, statistiques]}
   machine_learning: {label: Machine learning, keywords: [machine learning, ml, scikit learn, sklearn, apprentissage automatique]}
   forecasting: {label: Forecasting, keywords: [forecasting, forecast, forecasts, prevision, previsions]}
@@ -247,6 +291,197 @@ skills:
   lca: {label: Life cycle assessment, keywords: [lca, life cycle assessment, acv, analyse du cycle de vie]}
   carbon_accounting: {label: Carbon accounting, keywords: [carbon accounting, ghg protocol, bilan carbone, scope 3, comptabilite carbone, carbon footprint]}
   energy_modelling: {label: Energy modelling, keywords: [energy modelling, energy modeling, energy system modelling, modelisation energetique]}
-  stakeholder_management: {label: Stakeholder management, keywords: [stakeholder management, stakeholders, parties prenantes]}
+  stakeholder_management: {label: Stakeholder management, keywords: [stakeholder management, stakeholders, parties prenantes], generic: true}
   product_analytics: {label: Product analytics, keywords: [product analytics, amplitude, mixpanel]}
-  agile: {label: Agile, keywords: [agile, scrum, kanban]}
+  agile: {label: Agile, keywords: [agile, scrum, kanban], generic: true}
+
+# Places a website or a list can name, for the free route's office locations (whole-word
+# matches, EN/FR). Short or ambiguous names (Nice, Vienne, Cork…) are left out on purpose.
+places:
+  # countries
+  france: {label: "France", kind: country, keywords: ["france"]}
+  germany: {label: "Germany", kind: country, keywords: ["germany", "allemagne", "deutschland"]}
+  united_kingdom: {label: "United Kingdom", kind: country, keywords: ["united kingdom", "uk", "royaume uni", "england", "angleterre", "great britain", "grande bretagne"]}
+  spain: {label: "Spain", kind: country, keywords: ["spain", "espagne", "españa"]}
+  italy: {label: "Italy", kind: country, keywords: ["italy", "italie", "italia"]}
+  netherlands: {label: "Netherlands", kind: country, keywords: ["netherlands", "pays bas", "nederland", "holland"]}
+  belgium: {label: "Belgium", kind: country, keywords: ["belgium", "belgique", "belgië"]}
+  switzerland: {label: "Switzerland", kind: country, keywords: ["switzerland", "suisse", "schweiz"]}
+  austria: {label: "Austria", kind: country, keywords: ["austria", "autriche", "österreich"]}
+  portugal: {label: "Portugal", kind: country, keywords: ["portugal"]}
+  ireland: {label: "Ireland", kind: country, keywords: ["ireland", "irlande"]}
+  luxembourg: {label: "Luxembourg", kind: country, keywords: ["luxembourg"]}
+  sweden: {label: "Sweden", kind: country, keywords: ["sweden", "suède", "sverige"]}
+  norway: {label: "Norway", kind: country, keywords: ["norway", "norvège", "norge"]}
+  denmark: {label: "Denmark", kind: country, keywords: ["denmark", "danemark", "danmark"]}
+  finland: {label: "Finland", kind: country, keywords: ["finland", "finlande", "suomi"]}
+  iceland: {label: "Iceland", kind: country, keywords: ["iceland", "islande"]}
+  poland: {label: "Poland", kind: country, keywords: ["poland", "pologne", "polska"]}
+  czechia: {label: "Czechia", kind: country, keywords: ["czechia", "czech republic", "république tchèque", "tchéquie"]}
+  slovakia: {label: "Slovakia", kind: country, keywords: ["slovakia", "slovaquie"]}
+  hungary: {label: "Hungary", kind: country, keywords: ["hungary", "hongrie"]}
+  romania: {label: "Romania", kind: country, keywords: ["romania", "roumanie"]}
+  bulgaria: {label: "Bulgaria", kind: country, keywords: ["bulgaria", "bulgarie"]}
+  greece: {label: "Greece", kind: country, keywords: ["greece", "grèce"]}
+  croatia: {label: "Croatia", kind: country, keywords: ["croatia", "croatie"]}
+  slovenia: {label: "Slovenia", kind: country, keywords: ["slovenia", "slovénie"]}
+  estonia: {label: "Estonia", kind: country, keywords: ["estonia", "estonie"]}
+  latvia: {label: "Latvia", kind: country, keywords: ["latvia", "lettonie"]}
+  lithuania: {label: "Lithuania", kind: country, keywords: ["lithuania", "lituanie"]}
+  ukraine: {label: "Ukraine", kind: country, keywords: ["ukraine"]}
+  serbia: {label: "Serbia", kind: country, keywords: ["serbia", "serbie"]}
+  turkey: {label: "Turkey", kind: country, keywords: ["turkey", "turquie", "türkiye"]}
+  cyprus: {label: "Cyprus", kind: country, keywords: ["cyprus", "chypre"]}
+  malta: {label: "Malta", kind: country, keywords: ["malta", "malte"]}
+  united_states: {label: "United States", kind: country, keywords: ["united states", "usa", "états unis", "etats unis"]}
+  canada: {label: "Canada", kind: country, keywords: ["canada"]}
+  mexico: {label: "Mexico", kind: country, keywords: ["mexico", "mexique"]}
+  brazil: {label: "Brazil", kind: country, keywords: ["brazil", "brésil", "brasil"]}
+  argentina: {label: "Argentina", kind: country, keywords: ["argentina", "argentine"]}
+  chile: {label: "Chile", kind: country, keywords: ["chile", "chili"]}
+  colombia: {label: "Colombia", kind: country, keywords: ["colombia", "colombie"]}
+  peru: {label: "Peru", kind: country, keywords: ["peru", "pérou"]}
+  india: {label: "India", kind: country, keywords: ["india", "inde"]}
+  china: {label: "China", kind: country, keywords: ["china", "chine"]}
+  japan: {label: "Japan", kind: country, keywords: ["japan", "japon"]}
+  south_korea: {label: "South Korea", kind: country, keywords: ["south korea", "corée du sud"]}
+  singapore: {label: "Singapore", kind: country, keywords: ["singapore", "singapour"]}
+  indonesia: {label: "Indonesia", kind: country, keywords: ["indonesia", "indonésie"]}
+  vietnam: {label: "Vietnam", kind: country, keywords: ["vietnam", "viet nam"]}
+  thailand: {label: "Thailand", kind: country, keywords: ["thailand", "thaïlande"]}
+  philippines: {label: "Philippines", kind: country, keywords: ["philippines"]}
+  malaysia: {label: "Malaysia", kind: country, keywords: ["malaysia", "malaisie"]}
+  australia: {label: "Australia", kind: country, keywords: ["australia", "australie"]}
+  new_zealand: {label: "New Zealand", kind: country, keywords: ["new zealand", "nouvelle zélande"]}
+  south_africa: {label: "South Africa", kind: country, keywords: ["south africa", "afrique du sud"]}
+  nigeria: {label: "Nigeria", kind: country, keywords: ["nigeria"]}
+  kenya: {label: "Kenya", kind: country, keywords: ["kenya"]}
+  ghana: {label: "Ghana", kind: country, keywords: ["ghana"]}
+  senegal: {label: "Senegal", kind: country, keywords: ["senegal", "sénégal"]}
+  rwanda: {label: "Rwanda", kind: country, keywords: ["rwanda"]}
+  ethiopia: {label: "Ethiopia", kind: country, keywords: ["ethiopia", "éthiopie"]}
+  egypt: {label: "Egypt", kind: country, keywords: ["egypt", "égypte"]}
+  morocco: {label: "Morocco", kind: country, keywords: ["morocco", "maroc"]}
+  tunisia: {label: "Tunisia", kind: country, keywords: ["tunisia", "tunisie"]}
+  algeria: {label: "Algeria", kind: country, keywords: ["algeria", "algérie"]}
+  israel: {label: "Israel", kind: country, keywords: ["israel", "israël"]}
+  united_arab_emirates: {label: "United Arab Emirates", kind: country, keywords: ["united arab emirates", "uae", "émirats arabes unis"]}
+  saudi_arabia: {label: "Saudi Arabia", kind: country, keywords: ["saudi arabia", "arabie saoudite"]}
+  # regions
+  ile_de_france: {label: "Île-de-France", kind: region, keywords: ["ile de france", "île de france", "paris region", "région parisienne"], in: france}
+  auvergne_rhone_alpes: {label: "Auvergne-Rhône-Alpes", kind: region, keywords: ["auvergne rhone alpes", "auvergne rhône alpes"], in: france}
+  occitanie: {label: "Occitanie", kind: region, keywords: ["occitanie"], in: france}
+  nouvelle_aquitaine: {label: "Nouvelle-Aquitaine", kind: region, keywords: ["nouvelle aquitaine"], in: france}
+  provence: {label: "Provence-Alpes-Côte d'Azur", kind: region, keywords: ["provence", "paca", "côte d'azur", "cote d azur"], in: france}
+  brittany: {label: "Brittany", kind: region, keywords: ["brittany", "bretagne"], in: france}
+  hauts_de_france: {label: "Hauts-de-France", kind: region, keywords: ["hauts de france"], in: france}
+  grand_est: {label: "Grand Est", kind: region, keywords: ["grand est"], in: france}
+  pays_de_la_loire: {label: "Pays de la Loire", kind: region, keywords: ["pays de la loire"], in: france}
+  bavaria: {label: "Bavaria", kind: region, keywords: ["bavaria", "bavière", "bayern"], in: germany}
+  catalonia: {label: "Catalonia", kind: region, keywords: ["catalonia", "catalogne", "catalunya"], in: spain}
+  scotland: {label: "Scotland", kind: region, keywords: ["scotland", "écosse"], in: united_kingdom}
+  wales: {label: "Wales", kind: region, keywords: ["wales", "pays de galles"], in: united_kingdom}
+  flanders: {label: "Flanders", kind: region, keywords: ["flanders", "flandre", "vlaanderen"], in: belgium}
+  wallonia: {label: "Wallonia", kind: region, keywords: ["wallonia", "wallonie"], in: belgium}
+  california: {label: "California", kind: region, keywords: ["california", "californie"], in: united_states}
+  # cities
+  paris: {label: "Paris", kind: city, keywords: ["paris"], in: france}
+  la_defense: {label: "La Défense", kind: city, keywords: ["la défense", "la defense"], in: france}
+  lyon: {label: "Lyon", kind: city, keywords: ["lyon"], in: france}
+  marseille: {label: "Marseille", kind: city, keywords: ["marseille"], in: france}
+  toulouse: {label: "Toulouse", kind: city, keywords: ["toulouse"], in: france}
+  bordeaux: {label: "Bordeaux", kind: city, keywords: ["bordeaux"], in: france}
+  lille: {label: "Lille", kind: city, keywords: ["lille"], in: france}
+  nantes: {label: "Nantes", kind: city, keywords: ["nantes"], in: france}
+  montpellier: {label: "Montpellier", kind: city, keywords: ["montpellier"], in: france}
+  strasbourg: {label: "Strasbourg", kind: city, keywords: ["strasbourg"], in: france}
+  rennes: {label: "Rennes", kind: city, keywords: ["rennes"], in: france}
+  grenoble: {label: "Grenoble", kind: city, keywords: ["grenoble"], in: france}
+  aix_en_provence: {label: "Aix-en-Provence", kind: city, keywords: ["aix en provence"], in: france}
+  sophia_antipolis: {label: "Sophia Antipolis", kind: city, keywords: ["sophia antipolis"], in: france}
+  london: {label: "London", kind: city, keywords: ["london", "londres"], in: united_kingdom}
+  manchester: {label: "Manchester", kind: city, keywords: ["manchester"], in: united_kingdom}
+  edinburgh: {label: "Edinburgh", kind: city, keywords: ["edinburgh", "édimbourg"], in: united_kingdom}
+  bristol: {label: "Bristol", kind: city, keywords: ["bristol"], in: united_kingdom}
+  cambridge_uk: {label: "Cambridge", kind: city, keywords: ["cambridge"], in: united_kingdom}
+  oxford: {label: "Oxford", kind: city, keywords: ["oxford"], in: united_kingdom}
+  berlin: {label: "Berlin", kind: city, keywords: ["berlin"], in: germany}
+  munich: {label: "Munich", kind: city, keywords: ["munich", "münchen", "munchen"], in: germany}
+  hamburg: {label: "Hamburg", kind: city, keywords: ["hamburg", "hambourg"], in: germany}
+  frankfurt: {label: "Frankfurt", kind: city, keywords: ["frankfurt", "francfort"], in: germany}
+  cologne: {label: "Cologne", kind: city, keywords: ["cologne", "köln", "koln"], in: germany}
+  stuttgart: {label: "Stuttgart", kind: city, keywords: ["stuttgart"], in: germany}
+  dusseldorf: {label: "Düsseldorf", kind: city, keywords: ["düsseldorf", "dusseldorf"], in: germany}
+  amsterdam: {label: "Amsterdam", kind: city, keywords: ["amsterdam"], in: netherlands}
+  rotterdam: {label: "Rotterdam", kind: city, keywords: ["rotterdam"], in: netherlands}
+  the_hague: {label: "The Hague", kind: city, keywords: ["the hague", "la haye", "den haag"], in: netherlands}
+  utrecht: {label: "Utrecht", kind: city, keywords: ["utrecht"], in: netherlands}
+  eindhoven: {label: "Eindhoven", kind: city, keywords: ["eindhoven"], in: netherlands}
+  delft: {label: "Delft", kind: city, keywords: ["delft"], in: netherlands}
+  brussels: {label: "Brussels", kind: city, keywords: ["brussels", "bruxelles", "brussel"], in: belgium}
+  antwerp: {label: "Antwerp", kind: city, keywords: ["antwerp", "anvers", "antwerpen"], in: belgium}
+  ghent: {label: "Ghent", kind: city, keywords: ["ghent", "gand", "gent"], in: belgium}
+  zurich: {label: "Zurich", kind: city, keywords: ["zurich", "zürich"], in: switzerland}
+  geneva: {label: "Geneva", kind: city, keywords: ["geneva", "genève", "geneve"], in: switzerland}
+  lausanne: {label: "Lausanne", kind: city, keywords: ["lausanne"], in: switzerland}
+  basel: {label: "Basel", kind: city, keywords: ["basel", "bâle"], in: switzerland}
+  vienna: {label: "Vienna", kind: city, keywords: ["vienna", "wien"], in: austria}
+  madrid: {label: "Madrid", kind: city, keywords: ["madrid"], in: spain}
+  barcelona: {label: "Barcelona", kind: city, keywords: ["barcelona", "barcelone"], in: spain}
+  valencia: {label: "Valencia", kind: city, keywords: ["valencia"], in: spain}
+  bilbao: {label: "Bilbao", kind: city, keywords: ["bilbao"], in: spain}
+  seville: {label: "Seville", kind: city, keywords: ["seville", "séville", "sevilla"], in: spain}
+  lisbon: {label: "Lisbon", kind: city, keywords: ["lisbon", "lisbonne", "lisboa"], in: portugal}
+  porto: {label: "Porto", kind: city, keywords: ["porto"], in: portugal}
+  milan: {label: "Milan", kind: city, keywords: ["milan", "milano"], in: italy}
+  rome: {label: "Rome", kind: city, keywords: ["rome", "roma"], in: italy}
+  turin: {label: "Turin", kind: city, keywords: ["turin", "torino"], in: italy}
+  dublin: {label: "Dublin", kind: city, keywords: ["dublin"], in: ireland}
+  copenhagen: {label: "Copenhagen", kind: city, keywords: ["copenhagen", "copenhague", "københavn"], in: denmark}
+  stockholm: {label: "Stockholm", kind: city, keywords: ["stockholm"], in: sweden}
+  gothenburg: {label: "Gothenburg", kind: city, keywords: ["gothenburg", "göteborg"], in: sweden}
+  oslo: {label: "Oslo", kind: city, keywords: ["oslo"], in: norway}
+  helsinki: {label: "Helsinki", kind: city, keywords: ["helsinki"], in: finland}
+  reykjavik: {label: "Reykjavik", kind: city, keywords: ["reykjavik", "reykjavík"], in: iceland}
+  tallinn: {label: "Tallinn", kind: city, keywords: ["tallinn"], in: estonia}
+  riga: {label: "Riga", kind: city, keywords: ["riga"], in: latvia}
+  vilnius: {label: "Vilnius", kind: city, keywords: ["vilnius"], in: lithuania}
+  warsaw: {label: "Warsaw", kind: city, keywords: ["warsaw", "varsovie", "warszawa"], in: poland}
+  krakow: {label: "Kraków", kind: city, keywords: ["krakow", "kraków", "cracovie"], in: poland}
+  prague: {label: "Prague", kind: city, keywords: ["prague", "praha"], in: czechia}
+  budapest: {label: "Budapest", kind: city, keywords: ["budapest"], in: hungary}
+  bucharest: {label: "Bucharest", kind: city, keywords: ["bucharest", "bucarest", "bucurești"], in: romania}
+  athens: {label: "Athens", kind: city, keywords: ["athens", "athènes"], in: greece}
+  istanbul: {label: "Istanbul", kind: city, keywords: ["istanbul"], in: turkey}
+  kyiv: {label: "Kyiv", kind: city, keywords: ["kyiv", "kiev"], in: ukraine}
+  new_york: {label: "New York", kind: city, keywords: ["new york", "nyc"], in: united_states}
+  san_francisco: {label: "San Francisco", kind: city, keywords: ["san francisco", "bay area"], in: united_states}
+  boston: {label: "Boston", kind: city, keywords: ["boston"], in: united_states}
+  seattle: {label: "Seattle", kind: city, keywords: ["seattle"], in: united_states}
+  los_angeles: {label: "Los Angeles", kind: city, keywords: ["los angeles"], in: united_states}
+  chicago: {label: "Chicago", kind: city, keywords: ["chicago"], in: united_states}
+  toronto: {label: "Toronto", kind: city, keywords: ["toronto"], in: canada}
+  montreal: {label: "Montreal", kind: city, keywords: ["montreal", "montréal"], in: canada}
+  vancouver: {label: "Vancouver", kind: city, keywords: ["vancouver"], in: canada}
+  sao_paulo: {label: "São Paulo", kind: city, keywords: ["são paulo", "sao paulo"], in: brazil}
+  buenos_aires: {label: "Buenos Aires", kind: city, keywords: ["buenos aires"], in: argentina}
+  bangalore: {label: "Bangalore", kind: city, keywords: ["bangalore", "bengaluru"], in: india}
+  mumbai: {label: "Mumbai", kind: city, keywords: ["mumbai"], in: india}
+  delhi: {label: "Delhi", kind: city, keywords: ["new delhi", "delhi"], in: india}
+  tokyo: {label: "Tokyo", kind: city, keywords: ["tokyo"], in: japan}
+  seoul: {label: "Seoul", kind: city, keywords: ["seoul", "séoul"], in: south_korea}
+  beijing: {label: "Beijing", kind: city, keywords: ["beijing", "pékin"], in: china}
+  shanghai: {label: "Shanghai", kind: city, keywords: ["shanghai"], in: china}
+  shenzhen: {label: "Shenzhen", kind: city, keywords: ["shenzhen"], in: china}
+  hong_kong: {label: "Hong Kong", kind: city, keywords: ["hong kong"], in: china}
+  sydney: {label: "Sydney", kind: city, keywords: ["sydney"], in: australia}
+  melbourne: {label: "Melbourne", kind: city, keywords: ["melbourne"], in: australia}
+  nairobi: {label: "Nairobi", kind: city, keywords: ["nairobi"], in: kenya}
+  lagos: {label: "Lagos", kind: city, keywords: ["lagos"], in: nigeria}
+  cape_town: {label: "Cape Town", kind: city, keywords: ["cape town"], in: south_africa}
+  johannesburg: {label: "Johannesburg", kind: city, keywords: ["johannesburg"], in: south_africa}
+  cairo: {label: "Cairo", kind: city, keywords: ["cairo", "le caire"], in: egypt}
+  tel_aviv: {label: "Tel Aviv", kind: city, keywords: ["tel aviv"], in: israel}
+  dubai: {label: "Dubai", kind: city, keywords: ["dubai", "dubaï"], in: united_arab_emirates}
+  abu_dhabi: {label: "Abu Dhabi", kind: city, keywords: ["abu dhabi"], in: united_arab_emirates}
+  casablanca: {label: "Casablanca", kind: city, keywords: ["casablanca"], in: morocco}

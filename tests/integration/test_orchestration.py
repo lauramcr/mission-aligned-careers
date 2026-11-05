@@ -15,13 +15,13 @@ from job_radar.web.http import FakeHttpClient, HttpClient, Response
 
 REPO = Path(__file__).resolve().parents[2]
 FIXTURES = REPO / "tests" / "fixtures"
-ASHBY = "https://api.ashbyhq.com/posting-api/job-board/trawa?includeCompensation=true"
+ASHBY = "https://api.ashbyhq.com/posting-api/job-board/snowflake?includeCompensation=true"
 PAGES: dict[str, Response | Exception] = {
-    ASHBY: Response(ASHBY, 200, (FIXTURES / "boards/ashby/trawa.json").read_text()),
-    "https://www.trawa.de": Response(
-        "https://www.trawa.de",
+    ASHBY: Response(ASHBY, 200, (FIXTURES / "boards/ashby/snowflake.json").read_text()),
+    "https://www.snowflake.com": Response(
+        "https://www.snowflake.com",
         200,
-        "<html><head><title>trawa</title></head><body><h1>trawa</h1>"
+        "<html><head><title>Snowflake</title></head><body><h1>Snowflake</h1>"
         "<p>Renewable energy trading for businesses: solar and wind power.</p></body></html>",
     ),
 }
@@ -40,10 +40,10 @@ def radar(tmp_path: Path) -> FakeRadar:
     companies = tmp_path / "companies.csv"
     companies.write_text(
         "name,website,careers_url,notes,referral\n"
-        "trawa,https://www.trawa.de,https://jobs.ashbyhq.com/trawa,,\n"
+        "Snowflake,https://www.snowflake.com,https://jobs.ashbyhq.com/snowflake,,\n"
     )
     return FakeRadar(
-        criteria=str(REPO / "config" / "criteria.example.yaml"),
+        criteria=str(REPO / "tests" / "fixtures" / "profile" / "criteria.yaml"),
         packs=str(REPO / "packs"),
         companies=str(companies),
         pending=str(tmp_path / "pending.csv"),
@@ -91,7 +91,7 @@ def test_weekly_run_produces_scores_roles_report_and_csv(radar: FakeRadar, tmp_p
     assert (tmp_path / "scores.csv").is_file()
 
     roles = result.asset_materializations_for_node("open_roles")[0].metadata
-    assert roles["checked"].value == 1 and roles["open_roles"].value == 19
+    assert roles["checked"].value == 1 and roles["open_roles"].value == 20
     checks = result.get_asset_check_evaluations()
     assert checks and all(c.passed for c in checks)
 
@@ -107,7 +107,7 @@ def test_find_careers_is_a_separate_manual_asset(radar: FakeRadar) -> None:
 
 def test_weekly_run_on_the_demo_world_offline(tmp_path: Path) -> None:
     """Replay mode: what `docker compose up` runs for a recruiter — no network, no account."""
-    demo = REPO / "demo"
+    demo = REPO / "demo_config"
     radar = RadarResource(
         criteria=str(demo / "criteria.yaml"),
         packs=str(REPO / "packs"),
@@ -128,7 +128,7 @@ def test_weekly_run_on_the_demo_world_offline(tmp_path: Path) -> None:
     assert scores["companies"].value == 6  # Alex's list + the fund's portfolio
     assert scores["facts"].value == "replayed (demo)"
     roles = result.asset_materializations_for_node("open_roles")[0].metadata
-    assert roles["to_watch"].value == 2  # Voltaïa and Canopée Data
+    assert roles["to_watch"].value == 3  # Voltaïa (data analyst, backend engineer), Canopée Data
     assert roles["cv_matched"].value is True
 
 
@@ -137,8 +137,18 @@ def test_resource_built_from_environment_variables() -> None:
 
     radar = RadarResource.from_paths(
         RadarPaths.from_env(
-            {"JOB_RADAR_DB": "demo-run/radar.duckdb", "JOB_RADAR_REPLAY_DIR": "demo"}
+            {"JOB_RADAR_DB": "demo-run/radar.duckdb", "JOB_RADAR_REPLAY_DIR": "demo_config"}
         )
     )
-    assert radar.db == "demo-run/radar.duckdb" and radar.replay_dir == "demo"
+    assert radar.db == "demo-run/radar.duckdb" and radar.replay_dir == "demo_config"
     assert radar.criteria == "config/criteria.yaml"
+    assert radar.use_llm is False  # no model unless asked
+
+
+def test_the_model_is_switched_on_with_an_environment_variable() -> None:
+    from job_radar.settings import use_llm_from_env
+
+    assert use_llm_from_env({}) is False
+    assert use_llm_from_env({"JOB_RADAR_USE_LLM": "1"}) is True
+    assert use_llm_from_env({"JOB_RADAR_USE_LLM": "yes"}) is True
+    assert use_llm_from_env({"JOB_RADAR_USE_LLM": "0"}) is False

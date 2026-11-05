@@ -14,7 +14,9 @@ REPO = Path(__file__).resolve().parents[3]
 
 @pytest.fixture(scope="module")
 def taxonomy() -> Taxonomy:
-    return load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs").taxonomy
+    return load_profile(
+        REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs"
+    ).taxonomy
 
 
 def text(described: str, website: str = "") -> str:
@@ -30,7 +32,7 @@ def text(described: str, website: str = "") -> str:
         (
             "Turns toxic industrial emissions into building blocks for brand-new products. · "
             "Sectors: cleantech, Clean Energy & Climate Tech",
-            "Aerleum transforms atmospheric CO₂ into cost-competitive synthetic fuels. "
+            "Patagonia transforms atmospheric CO₂ into cost-competitive synthetic fuels. "
             "Our carbon capture technology…",
             {"carbon_capture_removal"},
         ),
@@ -76,7 +78,7 @@ def test_rough_facts_are_marked_and_low_confidence(taxonomy: Taxonomy) -> None:
     assert facts.extracted_by == "keywords"
     assert facts.confidence == KEYWORD_CONFIDENCE < 0.6
     assert "solar" in facts.evidence["primary_theme"]
-    assert extractor.version == "keywords_v2" and extractor.metered is False
+    assert extractor.version == "keywords_v3" and extractor.metered is False
 
 
 def test_secondary_themes_need_repeated_mentions(taxonomy: Taxonomy) -> None:
@@ -124,7 +126,7 @@ def test_sector_mentions_are_clients_never_a_gate(taxonomy: Taxonomy) -> None:
     ("name", "described", "website"),
     [
         # one stray word on a homepage is not evidence of a climate theme
-        ("Notion", "", "The AI workspace that works for you. Stop the flood of messages."),
+        ("Microsoft", "", "The AI workspace that works for you. Stop the flood of messages."),
         (
             "Ada Health",
             "Saving patients years of life by shortening the time to diagnosis. · Sectors: health",
@@ -162,3 +164,39 @@ def test_analytics_wording_makes_data_core(taxonomy: Taxonomy) -> None:
         text=text("Grid analytics for solar farms.", "Machine learning monitoring of assets."),
     )
     assert facts.data_centrality is DataCentrality.CORE
+
+
+@pytest.mark.parametrize(
+    ("described", "website", "offices"),
+    [
+        # an address in the footer: the city, its country dropped (implied)
+        (
+            "Climate software.",
+            "Our story… Contact: 12 rue de Rivoli, 75001 Paris, France",
+            ["Paris"],
+        ),
+        # "offices in": cities first, in order found
+        (
+            "Ocean data.",
+            "We have offices in Berlin and Lyon. Lyon is home to our lab.",
+            ["Berlin", "Lyon"],
+        ),
+        # a single stray mention in running text is not an office
+        ("Grid batteries.", "We were inspired by a trip to Tokyo.", []),
+        # a list description counts: Norrsken's "Based in"
+        ("Recycles textiles. · Based in: Spain", "", ["Spain"]),
+        # twice on the website is enough
+        ("Solar.", "Made in Lisbon. Our Lisbon team builds panels.", ["Lisbon"]),
+        # nothing at all
+        ("Carbon accounting.", "We help companies measure emissions.", []),
+        # whole words only: "Parisian" or "ukulele" are not places
+        ("Agri.", "Based in a Parisian suburb, we love the ukulele.", []),
+    ],
+)
+def test_offices_are_found_without_a_model(
+    taxonomy: Taxonomy, described: str, website: str, offices: list[str]
+) -> None:
+    facts = KeywordExtractor(taxonomy).extract(
+        name="Acme", website="https://acme.example", text=text(described, website)
+    )
+    assert facts.office_locations == offices

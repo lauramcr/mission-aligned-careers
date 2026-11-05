@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your setup · Mission-Aligned Careers</title>
+<style>
+  :root { --bg: #fbfbfa; --fg: #1f2328; --muted: #656d76; --line: #d8dee4; --card: #ffffff;
+          --accent: #1a7f37; --warn: #9a6700; --bad: #cf222e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0d1117; --fg: #e6edf3; --muted: #8d96a0; --line: #30363d; --card: #161b22;
+            --accent: #3fb950; --warn: #d29922; --bad: #f85149; }
+  }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg);
+         font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 0 0 4px; }
+  h3 { font-size: 14px; margin: 14px 0 4px; }
+  a { color: inherit; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+            padding: 14px 16px; margin: 14px 0; }
+  .muted { color: var(--muted); } .small { font-size: 12px; }
+  .ok { color: var(--accent); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+  label { display: block; margin: 8px 0 2px; font-weight: 600; }
+  .hint { font-weight: normal; color: var(--muted); font-size: 12px; }
+  input[type=text], input[type=url], input[type=number], textarea, select {
+    font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 8px; width: 100%; box-sizing: border-box; }
+  textarea { min-height: 80px; }
+  textarea.code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; min-height: 320px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 4px 6px; border-top: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); }
+  .scroll { overflow-x: auto; }
+  .choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 2px 12px;
+             max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+  .choices label { font-weight: normal; margin: 0; display: flex; gap: 6px; align-items: center; }
+  .choices select { width: auto; padding: 1px 4px; }
+  button { font: inherit; padding: 5px 12px; cursor: pointer; border-radius: 6px;
+           border: 1px solid var(--line); background: var(--card); color: var(--fg); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .actions { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  .msg { font-size: 13px; }
+  ul.inputs { list-style: none; padding: 0; margin: 0; }
+  li.input { display: flex; gap: 8px; margin: 8px 0; }
+  li.input .mark { width: 14px; flex: none; font-weight: 700; }
+  li.input.disabled { color: var(--muted); }
+  ul.bullets { margin: 2px 0 2px 18px; padding: 0; }
+  .detail { font-size: 12px; color: var(--muted); margin-top: 2px; word-break: break-all; }
+  details > summary { cursor: pointer; font-weight: 600; margin-top: 10px; }
+  pre#run-lines { background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+                  padding: 8px; max-height: 320px; overflow-y: auto; white-space: pre-wrap; font-size: 12px; }
+  .demo { border: 1px solid var(--warn); border-radius: 8px; padding: 8px 12px; }
+  @media (max-width: 600px) { .two { grid-template-columns: 1fr !important; } }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; padding: 4px 0; }
+  .tag-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px;
+              border: 1px solid var(--accent); border-radius: 14px; font-size: 13px; }
+  .tag-chip button { border: none; background: none; padding: 0 4px; font-size: 14px; color: var(--muted); }
+  .tag-chip button:hover { color: var(--fg); }
+  .add-row { display: flex; gap: 6px; margin: 4px 0; }
+  .add-row input { flex: 1; } .add-row select { width: auto; }
+  details.inspiration > summary { font-weight: normal; color: var(--accent); }
+  table.words td:first-child { white-space: nowrap; }
+  p.small { margin: 6px 0 0; }
+  td.center { text-align: center; }
+  a.go { display: block; margin-top: 12px; padding: 14px 18px; border-radius: 8px;
+         font-size: 17px; font-weight: 600; text-align: center; text-decoration: none; }
+  a.go.loading { background: var(--line); color: var(--muted); cursor: progress; }
+  a.go.ready { background: var(--accent); color: #fff; cursor: pointer; }
+  a.go[hidden] { display: none; }
+  .read-only :disabled { opacity: .5; cursor: not-allowed; }
+  p.intro { font-size: 15px; margin: 8px 0 4px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+</style>
+</head>
+<body>
+<main{% if read_only %} class="read-only"{% endif %}>
+  <h1>Your setup</h1>
+  <p class="muted"><a href="/">← Dashboard</a> · <a href="?tour=1" id="take-tour">Take the tour</a>{% if not read_only %} · Everything here is saved in <code>config/</code>
+    on your computer (never committed). Each part has its own <em>Save</em>; nothing is deleted
+    (older CVs are kept in <code>old_cvs/</code>), and a change that isn't valid is refused with
+    the reason.{% endif %}</p>
+  {% if demo %}<p class="demo small"><strong>Demo:</strong> this is the setup of Alex, a fictional
+    person. {% if read_only %}It can't be changed here: look around, then <em>Run the demo</em> at the
+    bottom.{% else %}It's a copy in demo-run/: changes stay there.{% endif %}</p>
+  {% elif read_only %}<p class="demo small">These files are the committed demo kit: read only.</p>{% endif %}
+
+  <p class="intro"><strong>Mission-Aligned Careers</strong> searches for companies worth your interest,
+    starting from companies you may want to follow and from lists such as fund portfolios or
+    accelerators. Fill in the parts below to choose the companies and roles you're interested in.</p>
+
+  <section id="checklist">
+    <h2>Your inputs</h2>
+    <ul class="inputs">
+      {% for i in state.inputs %}
+      <li class="input{% if i.status == 'disabled' %} disabled{% endif %}">
+        <span class="mark {{ {'ok': 'ok', 'warn': 'warn', 'fail': 'bad'}.get(i.status, 'muted') }}">{{ {"ok": "✓", "warn": "!", "fail": "✗"}.get(i.status, "–") }}</span>
+        <div><strong>{{ i.name }}</strong>: {{ i.text }}
+          {% if i.bullets %}<ul class="bullets">{% for b in i.bullets %}<li>{{ b }}</li>{% endfor %}</ul>{% endif %}
+          {% if i.detail %}<div class="detail">{{ i.detail }}</div>{% endif %}</div>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="hint">✓ filled in · ! missing but optional · ✗ needed</p>
+  </section>
+
+  <section id="step-cv" data-save="/setup/cv">
+    <h2>1. Your CV</h2>
+    <p class="muted">Your master CV ranks open roles by how well your skills match (SQL, dbt,
+      GIS, carbon accounting…). It stays on your computer and is never sent to a model.</p>
+    <p>{% if state.cv %}Now: <strong>{{ state.cv.name }}</strong>
+      {% if state.cv.words %}<span class="ok">({{ state.cv.words }} words read)</span>
+      {% else %}<span class="warn">(no text could be read: a scanned PDF? Save it as Word or text)</span>{% endif %}
+      {% else %}<span class="warn">No CV yet.</span>{% endif %}
+      {% if state.old_cvs %}<br><span class="muted small">Older CVs kept in old_cvs/: {{ state.old_cvs|join(", ") }}</span>{% endif %}</p>
+    <label for="cv-file">Choose a file <span class="hint">PDF, Word (.docx), Markdown or text, up to 10 MB</span></label>
+    <input type="file" id="cv-file" accept=".pdf,.docx,.md,.txt">
+    <div class="actions"><button type="button" class="primary" data-action="cv">Use this CV</button><span class="msg"></span></div>
+  </section>
+
+  <section id="step-criteria" data-save="/setup/criteria">
+    <h2>2. What you're looking for</h2>
+    <p class="muted">These answers decide every score. Your choices show as tags: × removes one.
+      Add your own in the boxes (anything, not only climate), or pick from <em>Need
+      inspiration?</em>. Everything else in your criteria file keeps its value (see
+      <em>Advanced</em> below).</p>
+    {% set theme_label = dict(state.choices.themes) %}
+    {% set sector_label = dict(state.choices.sectors) %}
+    {% set family_label = dict(state.choices.families) %}
+    {% macro tag(key, label, kind, count=0) -%}
+      <span class="tag-chip" data-key="{{ key }}" data-kind="{{ kind }}">{{ label }}{% if count %} <span class="muted small">({{ count }})</span>{% endif %}{% if kind == "theme" %}<button type="button" class="move" title="Move between 'most important' and 'also OK'">⇅</button>{% endif %}<button type="button" class="x" title="Remove">×</button></span>
+    {%- endmacro %}
+    <div class="two">
+      <div><label for="home">Where you live <span class="hint">a town, or an address</span></label>
+        <input type="text" id="home" name="home" value="{{ state.criteria.home }}" placeholder="Paris, France"></div>
+      <div><label for="also">Other places that count as within reach <span class="hint">comma-separated; a role is within reach when its location names your town or one of these</span></label>
+        <input type="text" id="also" name="also_accept_places" data-list value="{{ state.criteria.also_accept_places|join(', ') }}" placeholder="Île-de-France, La Défense, Boulogne-Billancourt"></div>
+      <div><label for="remote">Fully remote roles are fine if based in <span class="hint">comma-separated</span></label>
+        <input type="text" id="remote" name="accept_remote_in" data-list value="{{ state.criteria.accept_remote_in|join(', ') }}" placeholder="France, Europe, EMEA, Anywhere"></div>
+    </div>
+
+    <h3>Fields of interest <span class="hint">what you'd like a company to work on</span></h3>
+    <p class="small">Most important:</p>
+    <div class="tags" id="themes-most">{% for k in state.criteria.tier_a %}{{ tag(k, theme_label.get(k, k), "theme") }}{% endfor %}</div>
+    <p class="small">Also OK:</p>
+    <div class="tags" id="themes-also">{% for k in state.criteria.tier_b %}{{ tag(k, theme_label.get(k, k), "theme") }}{% endfor %}</div>
+    <div class="add-row"><input type="text" id="add-theme" placeholder="Add your own: Biotech, Mental health, Education">
+      <select id="add-theme-tier"><option value="most">most important</option><option value="also">also OK</option></select>
+      <button type="button" data-add-term="theme">Add</button></div>
+    <details class="inspiration" id="inspire-themes"><summary>Need inspiration?</summary>
+      <div class="choices">{% for key, label in state.choices.themes if key not in state.criteria.tier_a and key not in state.criteria.tier_b %}
+        <label><input type="checkbox" data-inspire="themes-also" value="{{ key }}" data-label="{{ label }}"> {{ label }}</label>{% endfor %}</div>
+    </details>
+
+    <h3>Sectors you would never work for <span class="hint">companies whose core business is one of these are rejected</span></h3>
+    <div class="tags" id="sectors-never">{% for k in state.criteria.no_go %}{{ tag(k, sector_label.get(k, k), "sector") }}{% endfor %}</div>
+    <div class="add-row"><input type="text" id="add-sector" placeholder="Add your own: Gambling, Tobacco">
+      <button type="button" data-add-term="sector">Add</button></div>
+    <details class="inspiration" id="inspire-sectors"><summary>Need inspiration?</summary>
+      <div class="choices">{% for key, label in state.choices.sectors if key not in state.criteria.no_go %}
+        <label><input type="checkbox" data-inspire="sectors-never" value="{{ key }}" data-label="{{ label }}"> {{ label }}</label>{% endfor %}</div>
+    </details>
+
+    <h3>Kinds of roles <span class="hint">recognised by words in job titles; the number is how many open roles the last run found</span></h3>
+    <p class="small">Roles you want:</p>
+    <div class="tags" id="roles-want">{% for k in state.criteria.families %}{{ tag(k, family_label.get(k, k), "role", family_counts[k]) }}{% endfor %}</div>
+    <div class="add-row"><input type="text" id="add-role" placeholder="Add your own: Biostatistics, Policy officer">
+      <select id="add-role-tier"><option value="want">want</option><option value="never">never</option></select>
+      <button type="button" data-add-term="role">Add</button></div>
+    <p class="small">Roles you never want <span class="hint">(rejected)</span>:</p>
+    <div class="tags" id="roles-never">{% for k in state.criteria.excluded_families %}{{ tag(k, family_label.get(k, k), "role", family_counts[k]) }}{% endfor %}</div>
+    <details class="inspiration" id="inspire-roles"><summary>Need inspiration?</summary>
+      <div class="choices">{% for key, label in state.choices.families if key not in state.criteria.families and key not in state.criteria.excluded_families %}
+        <label><input type="checkbox" data-inspire="roles-want" value="{{ key }}" data-label="{{ label }}"> {{ label }}{% if family_counts[key] %} <span class="muted small">({{ family_counts[key] }})</span>{% endif %}</label>{% endfor %}</div>
+      <p class="hint">Ticked roles go to <em>want</em>; drag-free: use × and add again under <em>never</em> to move one.</p>
+    </details>
+
+    {% set mine = state.vocabulary %}
+    {% if mine.themes or mine.sectors or mine.role_families %}
+    <details id="own-terms">
+    <summary>Optional: help the tool recognise the terms you added</summary>
+    <p class="small">The tool finds each term you added by searching for words: on company websites for fields and sectors, in job titles for kinds of roles. It starts with the term itself, which is often enough. Add synonyms or related words to catch more, separated by commas: for example <em>casino, betting</em> for Gambling.</p>
+    <table class="words">
+      {% set purpose = {"theme": "field you're interested in: words on company websites", "sector": "sector you avoid: words on company websites", "role": "kind of role: words in job titles"} %}
+      {% for kind, section, field in [("theme", "themes", "keywords"), ("sector", "sectors", "keywords"), ("role", "role_families", "title_keywords")] %}
+      {% for key, entry in mine[section].items() %}
+      <tr><td>{{ entry.label }}<br><span class="muted small">{{ purpose[kind] }}</span></td>
+          <td><input type="text" data-words-key="{{ key }}" data-words-kind="{{ kind }}" value="{{ entry[field]|join(', ') }}"></td>
+          <td><button type="button" data-save-words>Save words</button> <span class="msg"></span></td></tr>
+      {% endfor %}{% endfor %}
+    </table>
+    </details>
+    {% endif %}
+
+    <div class="two">
+      <div><h3>Contracts you won't take</h3>
+        <div class="choices">{% for key, label in state.choices.contracts %}
+          <label><input type="checkbox" name="excluded_contracts" value="{{ key }}" {% if key in state.criteria.excluded_contracts %}checked{% endif %}> {{ label }}</label>{% endfor %}</div></div>
+      <div><h3>Organisations you'd join</h3>
+        <div class="choices">{% for key, label in state.choices.org_types %}
+          <label><input type="checkbox" name="org_types" value="{{ key }}" {% if key in state.criteria.org_types %}checked{% endif %}> {{ label }}</label>{% endfor %}</div></div>
+    </div>
+
+    <h3>What matters most <span class="hint">how impact, career and practical scores are mixed</span></h3>
+    {% for key, label in state.choices.weights %}
+    <label style="font-weight:normal"><input type="radio" name="weights" value="{{ key }}" {% if state.criteria.weights == key %}checked{% endif %}> {{ label }}</label>
+    {% endfor %}
+    {% if state.criteria.weights == "custom" %}<p class="muted small">Your weights are custom (set in the file): choosing one here replaces them.</p>{% endif %}
+    <div class="actions"><button type="button" class="primary" data-action="criteria">Save preferences</button><span class="msg"></span></div>
+
+    <details><summary>Advanced: the whole criteria file</summary>
+      <p class="muted small">Every setting, explained in its comments (bonuses, thresholds such as
+        <code>check_by_hand.recheck_days</code>, now {{ recheck_days }} days). Checked against the
+        pack when you save: if anything is wrong, nothing changes and the reason is shown.</p>
+      <textarea class="code" id="criteria-file" spellcheck="false">{{ state.criteria_file }}</textarea>
+      <div class="actions"><button type="button" data-action="criteria-file">Save the file</button><span class="msg"></span></div>
+    </details>
+  </section>
+
+  <section id="step-lists">
+    <h2>3. Lists to follow</h2>
+    <p class="muted">Pages that list companies you might be interested in: a fund's portfolio,
+      an accelerator, a ranking. This is how the tool finds companies you don't know yet (each
+      list is read again every 30 days).</p>
+    <div class="scroll"><table id="lists-table">
+      <tr><th>Name</th><th>Address</th><th>Type</th><th></th></tr>
+      {% for entry in state.lists %}
+      <tr><td><input type="text" data-k="name" value="{{ entry.name }}"></td>
+          <td><input type="url" data-k="url" value="{{ entry.url }}"></td>
+          <td><select data-k="type">{% for t in list_types %}<option value="{{ t }}" {% if (entry.type or 'page') == t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></td>
+          <td><button type="button" data-remove>Remove</button></td></tr>
+      {% endfor %}
+      <tr class="template" hidden><td><input type="text" data-k="name" placeholder="Fund A portfolio"></td>
+          <td><input type="url" data-k="url" placeholder="https://fund.example/portfolio"></td>
+          <td><select data-k="type">{% for t in list_types %}<option value="{{ t }}" {% if t == 'page' %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></td>
+          <td><button type="button" data-remove>Remove</button></td></tr>
+    </table></div>
+    {% if state.suggested_lists %}<p class="small">Suggested:
+      {% for s in state.suggested_lists %}<button type="button" class="small" data-suggest='{{ {"name": s.name, "url": s.url, "type": s.type or "page"}|tojson }}'>+ {{ s.name }}</button> {% endfor %}</p>{% endif %}
+    <div class="actions"><button type="button" data-add-row="lists-table">Add a list</button>
+      <button type="button" class="primary" data-action="lists">Save lists</button><span class="msg"></span></div>
+  </section>
+
+  <section id="step-companies">
+    <h2>4. Companies you're interested in following</h2>
+    <p class="muted">Companies you already have in mind. Add one per row, paste a few at once, or
+      upload a CSV. Ticked <em>Always follow</em>: followed (its jobs watched) whatever its
+      score. Unticked: the score decides, followed or worth a look but never rejected (useful for
+      a long LinkedIn import).</p>
+    <div class="scroll"><table id="companies-table">
+      <tr><th>Name</th><th>Website</th><th>Careers page <span class="hint">optional</span></th><th>Notes</th><th>Someone you know there</th><th title="Ticked: followed whatever its score. Unticked: the score decides (followed or worth a look, never rejected).">Always follow</th><th></th></tr>
+      {% for c in state.companies %}
+      <tr>{% for k in ["name", "website", "careers_url", "notes", "referral"] %}<td><input type="text" data-k="{{ k }}" value="{{ c[k] }}"></td>{% endfor %}
+          <td class="center"><input type="checkbox" data-k="always_follow" {% if (c.always_follow or "").lower() not in ("no", "false", "0") %}checked{% endif %}></td>
+          <td><button type="button" data-remove>Remove</button></td></tr>
+      {% endfor %}
+      <tr class="template" hidden><td><input type="text" data-k="name" placeholder="Google"></td>
+        <td><input type="text" data-k="website" placeholder="https://www.google.com"></td>
+        <td><input type="text" data-k="careers_url" placeholder="https://www.google.com/careers"></td>
+        <td><input type="text" data-k="notes" placeholder="met at ChangeNOW"></td>
+        <td><input type="text" data-k="referral" placeholder="Sam"></td>
+        <td class="center"><input type="checkbox" data-k="always_follow" checked></td>
+        <td><button type="button" data-remove>Remove</button></td></tr>
+    </table></div>
+    <div class="actions"><button type="button" data-add-row="companies-table">Add a row</button>
+      <button type="button" class="primary" data-action="companies">Save companies</button><span class="msg"></span></div>
+    <div class="two">
+      <div><label for="paste">Paste companies <span class="hint">one per line: a name or a website</span></label>
+        <textarea id="paste" placeholder="https://www.google.com&#10;IKEA&#10;HeatCo"></textarea>
+        <div class="actions"><button type="button" data-action="paste">Add them</button><span class="msg"></span></div></div>
+      <div><label for="csv-file">Or a CSV file <span class="hint">e.g. LinkedIn: Settings → Data privacy → Get a copy of your data → Company Follows</span></label>
+        <input type="file" id="csv-file" accept=".csv">
+        <p class="hint">The file needs a header row and a name column (<code>name</code>,
+          <code>company</code>, <code>company name</code>, <code>organization</code>…); a website
+          column (<code>website</code>, <code>url</code>…) is optional, and other columns are kept
+          as notes. Comma-separated, UTF-8 (Excel: “CSV UTF-8”). LinkedIn's export works as is.</p>
+        <div class="actions"><button type="button" data-action="csv">Add from the file</button><span class="msg"></span></div></div>
+    </div>
+  </section>
+
+  <section id="step-pending">
+    <h2>5. Waiting for your input</h2>
+    <p class="muted">Companies the tool couldn't find a website for. Add the website and save:
+      they move to your list.</p>
+    {% if state.pending %}
+    <div class="scroll"><table id="pending-table">
+      <tr><th>Company</th><th>Why</th><th>Website</th></tr>
+      {% for p in state.pending %}
+      <tr><td>{{ p.name }}<input type="hidden" data-k="name" value="{{ p.name }}"></td><td class="small muted">{{ p.reason }}</td>
+          <td><input type="text" data-k="website" value="{{ p.website }}" placeholder="https://…"></td></tr>
+      {% endfor %}
+    </table></div>
+    <div class="actions"><button type="button" class="primary" data-action="pending">Save websites</button><span class="msg"></span></div>
+    {% else %}<p class="muted">Nothing waiting.</p>{% endif %}
+  </section>
+
+  <section id="step-run">
+    <h2>6. Save and run</h2>
+    <p class="muted">Saves every part you changed, then runs what is due (your list, lists and
+      websites every 30 days, job boards every 7) — the same as <code>uv run radar start</code>.
+      A first run can take a while: progress shows below.</p>
+    <div class="actions"><button type="button" class="primary" id="save-and-run">{{ "Run the demo" if demo and read_only else "Save all and run" }}</button>
+      <span class="msg" id="run-state"></span></div>
+    <pre id="run-lines" hidden></pre>
+    <a id="go-dashboard" class="go loading" hidden aria-disabled="true">Loading… (ongoing run)</a>
+  </section>
+</main>
+{% set tour_key = "radar.tour.seen.setup." ~ ("demo" if demo else "yours") %}
+{% include "_tour.html" %}
+<script>
+  // Read-only (the demo): every control is shown as on a normal setup, but greyed out; only
+  // Run the demo and the tour work (inspiration lists still open).
+  const readOnly = document.querySelector("main").classList.contains("read-only");
+  if (readOnly) {
+    document.querySelectorAll("main input, main select, main textarea, main button").forEach((el) => {
+      if (el.id !== "save-and-run" && el.id !== "take-tour") el.disabled = true;
+    });
+  }
+  // Each section saves to its own address; a change marks it, so "Save all and run" saves it.
+  const dirty = new Set();
+  document.querySelectorAll("section").forEach((s) => s.addEventListener("input", () => dirty.add(s.id)));
+
+  const say = (el, text, ok) => { el.textContent = text; el.className = "msg " + (ok ? "ok" : "bad"); };
+  async function post(url, body) {
+    const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" },
+                                         body: JSON.stringify(body) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.detail ? (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail)) : response.statusText);
+    return data.message || "Saved.";
+  }
+  const fileAsBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  const listOf = (text) => text.split(",").map((s) => s.trim()).filter(Boolean);
+  const rows = (tableId) => [...document.querySelectorAll(`#${tableId} tr:not(.template)`)]
+    .filter((tr) => tr.querySelector("[data-k]"))
+    .map((tr) => Object.fromEntries([...tr.querySelectorAll("[data-k]")].map((i) =>
+      [i.dataset.k, i.type === "checkbox" ? (i.checked ? "" : "no") : i.value.trim()])));
+
+  const actions = {
+    async cv() {
+      const file = document.getElementById("cv-file").files[0];
+      if (!file) throw new Error("Choose a file first.");
+      return post("/setup/cv", { filename: file.name, base64: await fileAsBase64(file) });
+    },
+    async criteria() {
+      const answers = {};
+      document.querySelectorAll("#step-criteria .two input[name]").forEach((i) => {
+        answers[i.name] = i.hasAttribute("data-list") ? listOf(i.value) : (i.type === "number" ? Number(i.value) : i.value.trim());
+      });
+      const keys = (id) => [...document.querySelectorAll(`#${id} .tag-chip`)].map((t) => t.dataset.key);
+      answers.tier_a = keys("themes-most");
+      answers.tier_b = keys("themes-also");
+      answers.no_go = keys("sectors-never");
+      answers.families = keys("roles-want");
+      answers.excluded_families = keys("roles-never");
+      for (const name of ["excluded_contracts", "org_types"]) {
+        answers[name] = [...document.querySelectorAll(`#step-criteria input[name="${name}"]:checked`)].map((i) => i.value);
+      }
+      const weights = document.querySelector('input[name="weights"]:checked');
+      if (weights) answers.weights = weights.value;
+      return post("/setup/criteria", answers);
+    },
+    async "criteria-file"() { return post("/setup/criteria-file", { text: document.getElementById("criteria-file").value }); },
+    async lists() { return post("/setup/lists", { lists: rows("lists-table") }); },
+    async companies() { return post("/setup/companies", { rows: rows("companies-table") }); },
+    async paste() { return post("/setup/companies/add", { text: document.getElementById("paste").value }); },
+    async csv() {
+      const file = document.getElementById("csv-file").files[0];
+      if (!file) throw new Error("Choose a CSV file first.");
+      return post("/setup/companies/add", { csv_base64: await fileAsBase64(file) });
+    },
+    async pending() { return post("/setup/pending", { rows: rows("pending-table") }); },
+  };
+  // A successful save reloads the page (the checklist and tables show what is saved now).
+  document.querySelectorAll("[data-action]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const msg = button.parentElement.querySelector(".msg");
+      button.disabled = true;
+      try {
+        const text = await actions[button.dataset.action]();
+        say(msg, text, true);
+        sessionStorage.setItem("setup.saved", JSON.stringify({ section: button.closest("section").id, text }));
+        location.reload();
+      } catch (error) { say(msg, error.message, false); button.disabled = false; }
+    });
+  });
+  try {  // after a reload: show what was saved, next to its section
+    const saved = JSON.parse(sessionStorage.getItem("setup.saved") || "null");
+    sessionStorage.removeItem("setup.saved");
+    if (saved) {
+      const section = document.getElementById(saved.section);
+      const msg = section && (section.querySelector(".actions .msg") || section.querySelector(".msg"));
+      if (msg) { say(msg, saved.text, true); section.scrollIntoView({ block: "start" }); }
+    }
+  } catch {}
+
+  // Tags: × removes, ⇅ moves a theme between "most important" and "also OK"; ticking an
+  // inspiration item adds its tag. Saved with "Save preferences" (or "Save all and run").
+  const criteriaSection = document.getElementById("step-criteria");
+  criteriaSection.addEventListener("click", (event) => {
+    const chip = event.target.closest(".tag-chip");
+    if (!chip) return;
+    if (event.target.matches("button.x")) chip.remove();
+    if (event.target.matches("button.move")) {
+      const other = chip.parentElement.id === "themes-most" ? "themes-also" : "themes-most";
+      document.getElementById(other).append(chip);
+    }
+    dirty.add("step-criteria");
+  });
+  criteriaSection.querySelectorAll("[data-inspire]").forEach((box) => box.addEventListener("change", () => {
+    if (!box.checked) return;
+    const chip = document.createElement("span");
+    chip.className = "tag-chip";
+    chip.dataset.key = box.value;
+    chip.textContent = box.dataset.label;
+    if (box.dataset.inspire.startsWith("themes")) {
+      const move = document.createElement("button");
+      move.type = "button"; move.className = "move"; move.textContent = "⇅";
+      chip.append(move);
+    }
+    const remove = document.createElement("button");
+    remove.type = "button"; remove.className = "x"; remove.textContent = "×";
+    chip.append(remove);
+    document.getElementById(box.dataset.inspire).append(chip);
+    box.closest("label").hidden = true;
+    dirty.add("step-criteria");
+  }));
+  // Add your own: unsaved choices are saved first, then each comma-separated term is added.
+  criteriaSection.querySelectorAll("[data-add-term]").forEach((button) => button.addEventListener("click", async () => {
+    const kind = button.dataset.addTerm;
+    const input = document.getElementById(`add-${kind}`);
+    const tier = document.getElementById(`add-${kind}-tier`)?.value;
+    const labels = input.value.split(/[,\n]/).map((t) => t.trim()).filter(Boolean);
+    const msg = criteriaSection.querySelector(".actions .msg");
+    if (!labels.length) { say(msg, "Type a name first.", false); return; }
+    button.disabled = true;
+    try {
+      if (dirty.has("step-criteria")) await actions.criteria();
+      const done = [];
+      for (const label of labels) done.push(await post("/setup/terms", { kind, label, tier }));
+      sessionStorage.setItem("setup.saved", JSON.stringify({ section: "step-criteria", text: done.join(" ") }));
+      location.reload();
+    } catch (error) { say(msg, error.message, false); button.disabled = false; }
+  }));
+  // Your own terms: change the words to look for.
+  criteriaSection.querySelectorAll("[data-save-words]").forEach((button) => button.addEventListener("click", async () => {
+    const input = button.closest("tr").querySelector("[data-words-key]");
+    const msg = button.parentElement.querySelector(".msg");
+    try {
+      say(msg, await post("/setup/terms/words", { kind: input.dataset.wordsKind, key: input.dataset.wordsKey,
+                                                  words: listOf(input.value) }), true);
+    } catch (error) { say(msg, error.message, false); }
+  }));
+
+  // Tables: add and remove rows; suggested lists add a filled row.
+  const addRow = (tableId, values = {}) => {
+    const template = document.querySelector(`#${tableId} tr.template`);
+    const row = template.cloneNode(true);
+    row.classList.remove("template"); row.hidden = false;
+    row.querySelectorAll("[data-k]").forEach((i) => { if (values[i.dataset.k]) i.value = values[i.dataset.k]; });
+    template.before(row);
+    dirty.add(template.closest("section").id);
+    return row;
+  };
+  document.addEventListener("click", (event) => {
+    const t = event.target;
+    if (t.matches("[data-remove]")) { dirty.add(t.closest("section").id); t.closest("tr").remove(); }
+    if (t.matches("[data-add-row]")) addRow(t.dataset.addRow).querySelector("input").focus();
+    if (t.matches("[data-suggest]")) { addRow("lists-table", JSON.parse(t.dataset.suggest)); t.remove(); }
+  });
+
+  // Save all and run: save the changed parts, then run in the background and show progress.
+  const sectionAction = { "step-criteria": "criteria", "step-lists": "lists",
+                          "step-companies": "companies", "step-pending": "pending" };
+  const runButton = document.getElementById("save-and-run");
+  const runState = document.getElementById("run-state");
+  const lines = document.getElementById("run-lines");
+  let seen = 0;
+  async function poll() {
+    const status = await (await fetch(`/setup/run?since=${seen}`)).json();
+    for (const line of status.lines) lines.textContent += `${line.at}  ${line.text}\n`;
+    seen = status.count;
+    lines.scrollTop = lines.scrollHeight;
+    if (status.state === "running") { setTimeout(poll, 1000); return; }
+    runButton.disabled = false;
+    say(runState, status.state === "done" ? status.summary : `The run stopped: ${status.summary}`, status.state === "done");
+    dashboardButton(status.state);
+  }
+  // The big button under the progress: "Loading…" (grey) while the run goes, then a green
+  // "Go to dashboard →"; hidden again if the run stops with an error.
+  const goButton = document.getElementById("go-dashboard");
+  function dashboardButton(state) {
+    goButton.hidden = state === "failed" || state === "idle";
+    const ready = state === "done";
+    goButton.classList.toggle("loading", !ready);
+    goButton.classList.toggle("ready", ready);
+    goButton.setAttribute("aria-disabled", String(!ready));
+    goButton.textContent = ready ? "Go to dashboard →" : "Loading… (ongoing run)";
+    if (ready) goButton.href = "/"; else goButton.removeAttribute("href");
+  }
+  runButton.addEventListener("click", async () => {
+    runButton.disabled = true;
+    try {
+      if (!readOnly) for (const id of dirty) if (sectionAction[id]) await actions[sectionAction[id]]();
+      dirty.clear();
+      const response = await fetch("/setup/run", { method: "POST" });
+      if (!response.ok && response.status !== 409) {  // 409: a run is already going, follow it
+        throw new Error((await response.json()).detail || response.statusText);
+      }
+    } catch (error) {  // a save or the start failed: nothing runs
+      say(runState, error.message, false);
+      runButton.disabled = false;
+      return;
+    }
+    say(runState, "Running…", true);
+    lines.hidden = false; lines.textContent = ""; seen = 0;
+    dashboardButton("running");
+    poll();
+  });
+  fetch("/setup/run").then((r) => r.json()).then((status) => {  // a run already going: follow it
+    if (status.state === "running") {
+      runButton.disabled = true; lines.hidden = false; dashboardButton("running"); poll();
+    }
+  });
+</script>
+</body>
+</html>

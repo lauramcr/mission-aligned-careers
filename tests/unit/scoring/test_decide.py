@@ -13,7 +13,7 @@ REPO = Path(__file__).resolve().parents[3]
 
 @pytest.fixture(scope="module")
 def profile() -> Profile:
-    return load_profile(REPO / "config" / "criteria.example.yaml", REPO / "packs")
+    return load_profile(REPO / "tests" / "fixtures" / "profile" / "criteria.yaml", REPO / "packs")
 
 
 def fit(
@@ -95,7 +95,7 @@ def test_load_decisions_by_website_or_name(tmp_path: Path) -> None:
     )
     decisions = load_decisions(path)
     assert decisions.for_company("diffly.com", "Diffly") == UserDecision("reject", "not climate")
-    assert decisions.for_company("nocenergy.com", "noc energy") == UserDecision("follow", "")
+    assert decisions.for_company("tesla.com", "noc energy") == UserDecision("follow", "")
     assert decisions.for_company("other.com", "Other") is None
 
 
@@ -108,3 +108,21 @@ def test_load_decisions_rejects_unknown_values(tmp_path: Path) -> None:
 
 def test_missing_decisions_file_is_empty(tmp_path: Path) -> None:
     assert load_decisions(tmp_path / "nope.csv").for_company("acme.com", "Acme") is None
+
+
+@pytest.mark.parametrize(
+    ("assessment", "outcome", "reason"),
+    [
+        (fit(5, 4.6), Outcome.FOLLOW, "on your list (the score decides): impact 5"),
+        (fit(5, 3.9), Outcome.REVIEW, "on your list (the score decides): overall 3.9"),
+        (fit(0, 1.5, theme=None), Outcome.REVIEW, "no climate theme found"),  # never rejected
+        (fit(0, 0, hidden=True), Outcome.REVIEW, "excluded sector"),
+        (None, Outcome.UNSCORED, "not scored yet"),
+    ],
+)
+def test_your_company_without_always_follow_lets_the_score_decide(
+    profile: Profile, assessment: FitAssessment | None, outcome: Outcome, reason: str
+) -> None:
+    decision = decide(assessment, profile, known=True, always_follow=False, user_decision=None)
+    assert decision.outcome is outcome
+    assert reason in decision.reason
