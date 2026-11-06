@@ -1,5 +1,5 @@
 # Mission-Aligned Careers image: the `radar` CLI, Dagster and the API (no dev tools).
-# Build: docker build -t mission-aligned-careers .     Run the demo: docker run --rm mission-aligned-careers demo
+# Build: docker build -t mission-aligned-careers .     Run the demo: docker run --rm mission-aligned-careers demo --no-serve
 
 FROM python:3.13-slim AS build
 COPY --from=ghcr.io/astral-sh/uv:0.13.0 /uv /usr/local/bin/uv
